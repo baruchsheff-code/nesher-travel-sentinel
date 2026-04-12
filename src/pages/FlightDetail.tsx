@@ -24,6 +24,7 @@ const COUNTRY_MAP: Record<string, string> = {
 const FlightDetail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const flightId = searchParams.get("id") || "";
   const dest = searchParams.get("dest") || "";
 
