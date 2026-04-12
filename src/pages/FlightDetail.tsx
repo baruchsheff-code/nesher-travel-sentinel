@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   Tooltip,
