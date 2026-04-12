@@ -214,6 +214,7 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     stops,
     layoverAirport,
     priceUsd: parseFloat(offer.total_amount) || 0,
+    totalCurrency: offer.total_currency || "USD",
     prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
     pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
@@ -223,6 +224,8 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     isSkiplag: false,
     isSplitTicket: false,
     isResilientCarrier: false,
+    stopAirports: segments.length > 1 ? segments.slice(0, -1).map((s: any) => s.destination?.iata_code || "") : [],
+    expiresAt: offer.expires_at || undefined,
   };
 }
 
