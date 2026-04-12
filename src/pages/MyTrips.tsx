@@ -1,10 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar, Loader2, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar,
+  Loader2, RefreshCw, X, QrCode, Headphones, MessageCircle, Shield, ChevronRight,
+  Luggage, CreditCard, Copy, Check
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface BookingLeg {
   id: string;
@@ -133,13 +138,13 @@ const FlightStatusBadge = ({ status }: { status: string | null }) => {
   );
 };
 
-const TripCard = ({ booking }: { booking: Booking }) => {
+const TripCard = ({ booking, onClick }: { booking: Booking; onClick: () => void }) => {
   const firstLeg = booking.booking_legs[0];
   const lastLeg = booking.booking_legs[booking.booking_legs.length - 1];
   const upcoming = isUpcoming(booking);
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-5 space-y-4 animate-fade-in">
+    <div className="bg-card rounded-2xl border border-border p-5 space-y-4 animate-fade-in cursor-pointer hover:border-primary/40 transition-colors" onClick={onClick}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -153,9 +158,12 @@ const TripCard = ({ booking }: { booking: Booking }) => {
             <p className="text-xs text-muted-foreground">{firstLeg?.airline_name} · {firstLeg?.flight_number}</p>
           </div>
         </div>
-        <Badge variant={upcoming ? "default" : "secondary"} className="text-xs">
-          {upcoming ? "Upcoming" : "Past"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={upcoming ? "default" : "secondary"} className="text-xs">
+            {upcoming ? "Upcoming" : "Past"}
+          </Badge>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </div>
       </div>
 
       {/* Legs */}
@@ -203,11 +211,188 @@ const TripCard = ({ booking }: { booking: Booking }) => {
   );
 };
 
+/* ─── Helper ─── */
+function getDuration(dep: string | null, arr: string | null) {
+  if (!dep || !arr) return "—";
+  const ms = new Date(arr).getTime() - new Date(dep).getTime();
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return `${h}h ${m}m`;
+}
+
+/* ─── Boarding Pass ─── */
+const BoardingPass = ({ leg }: { leg: BookingLeg }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopyPnr = () => {
+    if (leg.pnr) {
+      navigator.clipboard.writeText(leg.pnr);
+      setCopied(true);
+      toast.success("PNR copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+  return (
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-foreground">{leg.airline_name}</p>
+          <p className="text-xs text-muted-foreground">{leg.flight_number}</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-foreground">{leg.origin_iata}</p>
+            <p className="text-xs text-muted-foreground">{formatTime(leg.departure_time)}</p>
+          </div>
+          <div className="flex-1 mx-4 flex flex-col items-center gap-1">
+            <p className="text-xs text-muted-foreground">{getDuration(leg.departure_time, leg.arrival_time)}</p>
+            <div className="w-full flex items-center">
+              <div className="h-px flex-1 bg-border" />
+              <Plane size={14} className="text-primary mx-2" />
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <FlightStatusBadge status={leg.flight_status} />
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-foreground">{leg.destination_iata}</p>
+            <p className="text-xs text-muted-foreground">{formatTime(leg.arrival_time)}</p>
+          </div>
+        </div>
+      </div>
+      {/* Dashed divider */}
+      <div className="relative">
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-background" />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-5 h-5 rounded-full bg-background" />
+        <div className="border-t border-dashed border-border mx-6" />
+      </div>
+      <div className="p-5 space-y-3">
+        <div className="grid grid-cols-3 gap-3">
+          <div><p className="text-xs text-muted-foreground">Terminal</p><p className="text-sm font-semibold text-foreground">{leg.terminal || "—"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Gate</p><p className="text-sm font-semibold text-foreground">{leg.gate || "—"}</p></div>
+          <div><p className="text-xs text-muted-foreground">Seat</p><p className="text-sm font-semibold text-foreground">{leg.seat_number || "—"}</p></div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">PNR / Booking Ref</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-sm font-mono font-bold text-foreground tracking-wider">{leg.pnr || "—"}</p>
+              {leg.pnr && (
+                <button onClick={handleCopyPnr} className="p-1 rounded hover:bg-background transition-colors">
+                  {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} className="text-muted-foreground" />}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="w-16 h-16 rounded-xl bg-background border border-border flex items-center justify-center">
+            <QrCode size={28} className="text-muted-foreground opacity-50" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Trip Detail Panel ─── */
+const TripDetail = ({ booking, onClose }: { booking: Booking; onClose: () => void }) => {
+  const firstLeg = booking.booking_legs[0];
+  const lastLeg = booking.booking_legs[booking.booking_legs.length - 1];
+  const upcoming = isUpcoming(booking);
+  const supportActions = [
+    { icon: MessageCircle, label: "Chat with Agent", desc: "Get help from our AI or human agents" },
+    { icon: Headphones, label: "Call Support", desc: "24/7 priority phone line" },
+    { icon: Shield, label: "File Insurance Claim", desc: "Submit a claim for disruptions" },
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-background h-full overflow-y-auto animate-fade-in" style={{ animationDuration: "0.25s" }}>
+        <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 px-5 pt-6 pb-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-foreground">{firstLeg?.origin_iata} → {lastLeg?.destination_iata}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{firstLeg?.airline_name} · {formatDate(firstLeg?.departure_time)}</p>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-card transition-colors"><X size={20} className="text-foreground" /></button>
+          </div>
+        </div>
+        <div className="px-5 py-6 space-y-6">
+          {/* Status */}
+          <div className="bg-card rounded-2xl border border-border p-4 flex items-center justify-between">
+            <div><p className="text-xs text-muted-foreground">Booking Status</p><p className="text-sm font-semibold text-foreground capitalize mt-0.5">{booking.booking_status || "Confirmed"}</p></div>
+            <Badge variant={upcoming ? "default" : "secondary"}>{upcoming ? "Upcoming" : "Completed"}</Badge>
+          </div>
+          {/* Itinerary */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Full Itinerary</h3>
+            <div className="space-y-3">
+              {booking.booking_legs.map((leg, idx) => (
+                <div key={leg.id}>
+                  {idx > 0 && (
+                    <div className="flex items-center gap-2 py-2 px-4">
+                      <div className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground bg-background px-2">{booking.is_self_transfer ? "Self-transfer" : "Connection"}</span><div className="h-px flex-1 bg-border" />
+                    </div>
+                  )}
+                  <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2"><Plane size={14} className="text-primary" /><span className="text-sm font-semibold text-foreground">{leg.flight_number}</span><span className="text-xs text-muted-foreground">· {leg.airline_name}</span></div>
+                      <FlightStatusBadge status={leg.flight_status} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div><p className="text-xl font-bold text-foreground">{formatTime(leg.departure_time)}</p><p className="text-xs text-muted-foreground">{leg.origin_iata}</p></div>
+                      <div className="text-center"><p className="text-xs text-muted-foreground">{getDuration(leg.departure_time, leg.arrival_time)}</p><div className="w-20 h-px bg-border mt-1" /></div>
+                      <div className="text-right"><p className="text-xl font-bold text-foreground">{formatTime(leg.arrival_time)}</p><p className="text-xs text-muted-foreground">{leg.destination_iata}</p></div>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {leg.terminal && <span>Terminal {leg.terminal}</span>}
+                      {leg.gate && <span>Gate {leg.gate}</span>}
+                      {leg.seat_number && <span>Seat {leg.seat_number}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Boarding Pass */}
+          {upcoming && (
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3">Boarding Pass</h3>
+              <div className="space-y-3">{booking.booking_legs.map((leg) => <BoardingPass key={leg.id} leg={leg} />)}</div>
+            </div>
+          )}
+          {/* Summary */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Booking Summary</h3>
+            <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Total Paid</span><span className="font-bold text-foreground">${booking.total_price_usd}</span></div>
+              <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Booking Type</span><span className="text-foreground capitalize">{booking.booking_type?.replace("_", " ") || "One Way"}</span></div>
+              <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Passengers</span><span className="text-foreground">{booking.ticket_count || 1}</span></div>
+              <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Booked On</span><span className="text-foreground">{formatDate(booking.created_at)}</span></div>
+            </div>
+          </div>
+          {/* Support */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Support</h3>
+            <div className="space-y-2">
+              {supportActions.map((action) => (
+                <button key={action.label} onClick={() => toast.info(`${action.label} — coming soon`)} className="w-full flex items-center gap-3 bg-card rounded-xl border border-border p-4 hover:border-primary/40 transition-colors text-left">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><action.icon size={16} className="text-primary" /></div>
+                  <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-foreground">{action.label}</p><p className="text-xs text-muted-foreground">{action.desc}</p></div>
+                  <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MyTrips = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(30);
@@ -370,7 +555,7 @@ const MyTrips = () => {
                 </button>
               </div>
             ) : (
-              upcoming.map((b) => <TripCard key={b.id} booking={b} />)
+              upcoming.map((b) => <TripCard key={b.id} booking={b} onClick={() => setSelectedBooking(b)} />)
             )}
           </TabsContent>
 
@@ -381,11 +566,12 @@ const MyTrips = () => {
                 <p className="text-muted-foreground text-sm">No past trips yet</p>
               </div>
             ) : (
-              past.map((b) => <TripCard key={b.id} booking={b} />)
+              past.map((b) => <TripCard key={b.id} booking={b} onClick={() => setSelectedBooking(b)} />)
             )}
           </TabsContent>
         </Tabs>
       )}
+      {selectedBooking && <TripDetail booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
     </div>
   );
 };
