@@ -1,30 +1,37 @@
 
 
-## Nesher — Premium Travel App Homepage
+## Rebuild Flight Detail Screen
 
-### What we're building
-A single, pixel-perfect mobile-first homepage for "Nesher" — a premium dark-mode travel app with gold accents.
+The current `FlightDetail.tsx` has a multi-step booking wizard (details → passengers → extras → review). The user wants a single-screen flight detail view matching a specific layout spec with toggle add-on cards.
 
-### Design System (global)
-- Dark mode only, deep navy background (#0A0F1E), card bg #1A2332
-- Gold accent #C9A84C, alert red #E74C3C
-- White primary text, #8899AA secondary text
-- Inter font throughout (14/18/28px)
-- 16px border radius, subtle gold borders on cards
-- 200ms fade transitions, no sharp corners
+### What Changes
 
-### Homepage Layout (full screen, vertically centered)
-1. **Top-left logo**: "Nesher" in gold 32px bold with eagle wing icon (Lucide `Bird` or similar)
-2. **Hero section** (centered):
-   - Headline: "Book smarter. Travel safer. Recover faster." — white, 36px
-   - Subtext: "Your AI travel agent — licensed, intelligent, always watching." — secondary, 16px
-3. **Search bar**: Full-width (32px padding), #1A2332 background, gold search icon, placeholder "Where do you want to go?", rounded
-4. **Trust badges row**: Three badges with emoji icons, secondary text, vertical dividers
-5. **Floating AI button**: Fixed bottom-right, 56px gold circle with chat bubble icon
+**File: `src/pages/FlightDetail.tsx`** — Full rewrite to a single-scroll layout:
 
-### Implementation
-- Update CSS variables for the dark theme
-- Add Inter font via Google Fonts
-- Build the homepage as a single responsive component
-- Add fade-in animation on mount
+1. **Flight Summary Card** (top) — Airline logo circle, flight number, date, full route with departure/arrival times, duration, stops, large price display (gold `#C9A84C`)
+
+2. **Fare Breakdown Card** — Always visible (no accordion), line items:
+   - Base fare, Taxes & fees (mock ~15% of base), AI Optimization Fee $30 with info tooltip, Total in gold/large
+
+3. **Add-Ons Section** — 7 toggle cards using the existing `ExtraToggle` pattern (refined):
+   - **Connection Guarantee** ($49, shield icon) — only if `isSplitTicket` (closest proxy for self-transfer)
+   - **Travel Insurance** ($49, umbrella icon)
+   - **eSIM** ($8, signal icon) — shows destination country name
+   - **Lounge Access** ($45, coffee icon) — only if `stops > 0` and duration > 3hrs (mock layover)
+   - **Price Freeze** ($29, lock icon)
+   - **Auto Check-In** (free, ticket icon) — greyed out with "Add passport in profile to enable" if no passport (mock as no passport)
+   - **Auto Recovery** (free, refresh icon) — requires card mandate, show setup prompt (mock as not active)
+
+4. **Book Button** — Fixed bottom, full-width, gold background (`#C9A84C`), dark text, shows dynamic total, subtext "Price verified live — no surprises"
+
+5. **Remove** the multi-step wizard (steps indicator, passenger form, review step). Keep the booking confirmation screen.
+
+### Technical Details
+
+- Reuse `FlightResult` type and `getMockFlightsForDestination` for data
+- Add mock values: taxes (15% of base), country name mapping from IATA codes, lounge names
+- Info tooltip for AI Optimization Fee using a simple hover/tap popover
+- Toggle state for each add-on, dynamically updating the total in the bottom bar
+- Maintain dark theme styling consistent with design tokens (card `#1A2332`, bg `#0A0F1E`, gold `#C9A84C`)
+- Keep existing route `/flight?id=...&dest=...` and navigation from SearchResults
 
