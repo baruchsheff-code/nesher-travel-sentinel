@@ -85,7 +85,7 @@ const AirportInput = ({ label, value, onChange, placeholder }: {
         )}
       </div>
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto">
           {results.map((d) => (
             <button
               key={d.iata}
