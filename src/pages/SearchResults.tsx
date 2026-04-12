@@ -386,6 +386,8 @@ const SearchResults = () => {
 
         <p className="text-sm font-semibold mt-2 text-foreground">
           {sortedFlights.length} flights found · Sorted by best value
+          {apiSource === "mock" && <span className="text-xs text-muted-foreground ml-2">(Demo data)</span>}
+          {apiSource === "duffel" && <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>}
         </p>
       </div>
 
