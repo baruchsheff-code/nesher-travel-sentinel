@@ -28,7 +28,31 @@ interface Props {
   compact?: boolean;
 }
 
-// Airport autocomplete dropdown
+// Israel overrides
+const ISRAEL_KEYWORDS = ["israel", "israeli", "tel aviv", "jerusalem"];
+const isIsraelQuery = (q: string) => ISRAEL_KEYWORDS.some(k => q.toLowerCase().includes(k));
+
+// Country code to flag
+const countryFlag = (cc: string) => {
+  if (!cc || cc.length !== 2) return "✈️";
+  const base = 0x1F1E6;
+  return String.fromCodePoint(base + cc.charCodeAt(0) - 65, base + cc.charCodeAt(1) - 65);
+};
+
+const POPULAR_AIRPORTS: Destination[] = [
+  { iata: "JFK", city: "New York", airport: "JFK", country: "US", flag: "🇺🇸" },
+  { iata: "LHR", city: "London", airport: "Heathrow", country: "UK", flag: "🇬🇧" },
+  { iata: "CDG", city: "Paris", airport: "CDG", country: "FR", flag: "🇫🇷" },
+  { iata: "TLV", city: "Tel Aviv", airport: "Ben Gurion", country: "IL", flag: "🇮🇱" },
+  { iata: "DXB", city: "Dubai", airport: "Dubai Intl", country: "AE", flag: "🇦🇪" },
+  { iata: "LAX", city: "Los Angeles", airport: "LAX", country: "US", flag: "🇺🇸" },
+  { iata: "SIN", city: "Singapore", airport: "Changi", country: "SG", flag: "🇸🇬" },
+  { iata: "NRT", city: "Tokyo", airport: "Narita", country: "JP", flag: "🇯🇵" },
+  { iata: "MIA", city: "Miami", airport: "MIA", country: "US", flag: "🇺🇸" },
+  { iata: "YYZ", city: "Toronto", airport: "Pearson", country: "CA", flag: "🇨🇦" },
+];
+
+// Airport autocomplete dropdown with live Duffel search
 const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
   label: string;
   value: Destination | null;
@@ -39,7 +63,9 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<Destination[]>([]);
+  const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -49,10 +75,73 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const searchPlaces = useCallback(async (q: string) => {
+    if (q.length < 2) { setResults([]); return; }
+
+    // Check Israel overrides first
+    if (isIsraelQuery(q)) {
+      const tlv = DESTINATION_MAP["tel aviv"];
+      if (tlv) { setResults([tlv]); setLoading(false); return; }
+    }
+
+    // Check local DESTINATION_MAP for quick matches
+    const localMatches = Object.values(DESTINATION_MAP).filter(d =>
+      d.city.toLowerCase().includes(q.toLowerCase()) ||
+      d.iata.toLowerCase() === q.toLowerCase()
+    );
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("search-places", {
+        body: { query: q },
+      });
+
+      if (!error && data?.success && data.places?.length > 0) {
+        const seen = new Set<string>();
+        const merged: Destination[] = [];
+
+        // Add local overrides first
+        for (const lm of localMatches) {
+          if (!seen.has(lm.iata)) { seen.add(lm.iata); merged.push(lm); }
+        }
+
+        // Add Duffel results
+        for (const p of data.places) {
+          if (!seen.has(p.iata_code)) {
+            seen.add(p.iata_code);
+            merged.push({
+              iata: p.iata_code,
+              city: p.city || p.name,
+              airport: p.type === "airport" ? p.name : "",
+              country: p.country || "",
+              flag: countryFlag(p.country || ""),
+            });
+          }
+        }
+        setResults(merged.slice(0, 8));
+      } else if (localMatches.length > 0) {
+        const seen = new Set<string>();
+        setResults(localMatches.filter(d => { if (seen.has(d.iata)) return false; seen.add(d.iata); return true; }));
+      } else {
+        setResults([]);
+      }
+    } catch {
+      // Fallback to local
+      if (localMatches.length > 0) {
+        const seen = new Set<string>();
+        setResults(localMatches.filter(d => { if (seen.has(d.iata)) return false; seen.add(d.iata); return true; }));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleInput = (v: string) => {
     setQuery(v);
     setOpen(true);
-    setResults(searchDestinations(v));
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (v.length < 2) { setResults([]); return; }
+    debounceRef.current = setTimeout(() => searchPlaces(v), 300);
   };
 
   const select = (d: Destination) => {
@@ -60,6 +149,8 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
     setQuery("");
     setOpen(false);
   };
+
+  const showPopular = open && !query && results.length === 0;
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
@@ -83,12 +174,14 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
             type="text"
             value={query}
             onChange={(e) => handleInput(e.target.value)}
-            onFocus={() => { if (query) setOpen(true); }}
+            onFocus={() => { setOpen(true); if (query.length >= 2) searchPlaces(query); }}
             placeholder={value ? `${value.flag} ${value.city} (${value.iata})` : placeholder}
             className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground w-full outline-none min-w-0"
           />
         )}
+        {loading && <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />}
       </div>
+      {/* Live results dropdown */}
       {open && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto">
           {results.map((d) => (
@@ -98,12 +191,30 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
               className="w-full text-left px-3 py-2.5 hover:bg-muted/50 transition-colors flex items-center gap-3"
             >
               <span className="text-lg">{d.flag}</span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground truncate">{d.city}</p>
-                <p className="text-xs text-muted-foreground truncate">{d.airport} · {d.iata}</p>
+                <p className="text-xs text-muted-foreground truncate">{d.airport ? `${d.airport} · ` : ""}{d.iata}</p>
               </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{d.iata}</span>
             </button>
           ))}
+        </div>
+      )}
+      {/* Popular airports chips */}
+      {showPopular && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-[60] p-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Popular airports</p>
+          <div className="flex flex-wrap gap-1.5">
+            {POPULAR_AIRPORTS.map((a) => (
+              <button
+                key={a.iata}
+                onClick={() => select(a)}
+                className="text-xs font-medium px-2.5 py-1.5 rounded-full bg-muted text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                {a.flag} {a.iata}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
