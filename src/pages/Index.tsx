@@ -1,6 +1,18 @@
 import { Search, MessageCircle, Bird } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col px-4 relative">
       {/* Logo */}
@@ -30,19 +42,21 @@ const Index = () => {
         </p>
 
         {/* Search Bar */}
-        <div className="w-full mt-8 animate-fade-in-delay-2">
+        <form onSubmit={handleSearch} className="w-full mt-8 animate-fade-in-delay-2">
           <div className="relative rounded-2xl p-[2px] gemini-glow">
             <div className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4 relative z-10">
               <Search className="text-primary shrink-0" size={22} />
               <input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Where do you want to go?"
                 className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none"
                 style={{ fontSize: 16, fontFamily: "Inter, sans-serif" }}
               />
             </div>
           </div>
-        </div>
+        </form>
 
         {/* Trust Badges */}
         <div className="flex items-center justify-center gap-0 mt-6 animate-fade-in-delay-3">
