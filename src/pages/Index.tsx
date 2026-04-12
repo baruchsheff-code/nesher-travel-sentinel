@@ -33,7 +33,7 @@ const Index = () => {
         <div className="w-full mt-8 animate-fade-in-delay-2">
           <div
             className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4"
-            style={{ border: "1px solid rgba(201, 168, 76, 0.15)" }}
+            style={{ border: "1px solid hsl(var(--border))" }}
           >
             <Search className="text-primary shrink-0" size={22} />
             <input
