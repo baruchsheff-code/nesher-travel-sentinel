@@ -1,8 +1,14 @@
-import { useState } from "react";
-import { ArrowLeft, Lock, CreditCard, ShieldCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Lock, CreditCard, ShieldCheck, Loader2 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const stripePromise = loadStripe("pk_test_51TLQqX1tkgu9VsdtzwyfxRr1wtUMUqm2QbuRTamYV1vBv2tlzT982XZ78aB7h3K2YMaipaHtS7omdD3wFv1KYiYH00U4n4vB6h");
 
 interface PaymentScreenProps {
   grandTotal: number;
@@ -16,37 +22,125 @@ interface PaymentScreenProps {
   isProcessing: boolean;
 }
 
-const PaymentScreen = ({
+const PaymentScreen = (props: PaymentScreenProps) => {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const createIntent = async () => {
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke("create-payment-intent", {
+          body: {
+            amount: Math.round(props.grandTotal * 100),
+            currency: "usd",
+            metadata: { source: "nesher-booking" },
+          },
+        });
+
+        if (fnError) throw fnError;
+        if (data?.error) throw new Error(data.error);
+        setClientSecret(data.clientSecret);
+      } catch (err: any) {
+        console.error("Payment intent error:", err);
+        setError(err.message || "Failed to initialize payment");
+        toast.error("Failed to initialize payment");
+      } finally {
+        setLoading(false);
+      }
+    };
+    createIntent();
+  }, [props.grandTotal]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={24} className="animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Setting up payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !clientSecret) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4">
+        <p className="text-sm text-destructive">{error || "Payment initialization failed"}</p>
+        <button onClick={props.onBack} className="text-sm text-primary underline">Go back</button>
+      </div>
+    );
+  }
+
+  return (
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance: {
+          theme: "night",
+          variables: {
+            colorPrimary: "#C9A84C",
+            colorBackground: "#1A2332",
+            colorText: "#FFFFFF",
+            colorDanger: "#E74C3C",
+            fontFamily: "Inter, sans-serif",
+            borderRadius: "12px",
+          },
+        },
+      }}
+    >
+      <CheckoutForm {...props} />
+    </Elements>
+  );
+};
+
+const CheckoutForm = ({
   grandTotal,
   baseFare,
   taxes,
   aiFee,
   extrasTotal,
-  seatPrice,
   onBack,
   onComplete,
   isProcessing,
 }: PaymentScreenProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const [saveCard, setSaveCard] = useState(false);
   const [maxAutoCharge, setMaxAutoCharge] = useState([500]);
   const [authorizeMandate, setAuthorizeMandate] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
+  const canPay = ready && !paying && !isProcessing && (!saveCard || authorizeMandate);
 
-  const formatCardNumber = (val: string) => {
-    const digits = val.replace(/\D/g, "").slice(0, 16);
-    return digits.replace(/(.{4})/g, "$1 ").trim();
+  const handleSubmit = async () => {
+    if (!stripe || !elements) return;
+    setPaying(true);
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + "/my-trips",
+        },
+        redirect: "if_required",
+      });
+
+      if (error) {
+        toast.error(error.message || "Payment failed");
+        setPaying(false);
+        return;
+      }
+
+      toast.success("Payment successful!");
+      onComplete();
+    } catch (err: any) {
+      toast.error(err.message || "Payment failed");
+      setPaying(false);
+    }
   };
-
-  const formatExpiry = (val: string) => {
-    const digits = val.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return digits;
-  };
-
-  const canComplete = cardNumber.replace(/\s/g, "").length >= 15 && expiry.length >= 4 && cvc.length >= 3 && (!saveCard || authorizeMandate);
 
   return (
     <div className="min-h-screen bg-background pb-8 animate-fade-in">
@@ -92,49 +186,19 @@ const PaymentScreen = ({
           </div>
         </div>
 
-        {/* Card Input */}
+        {/* Stripe Payment Element */}
         <div
-          className="rounded-2xl p-4 space-y-4"
+          className="rounded-2xl p-4"
           style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
         >
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-4">
             <CreditCard size={18} className="text-primary" />
             <p className="text-sm font-semibold text-foreground">Card Details</p>
           </div>
-
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Card number</label>
-            <input
-              type="text"
-              placeholder="4242 4242 4242 4242"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              className="w-full rounded-xl px-3 py-2.5 text-sm bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">Expiry</label>
-              <input
-                type="text"
-                placeholder="MM/YY"
-                value={expiry}
-                onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                className="w-full rounded-xl px-3 py-2.5 text-sm bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">CVC</label>
-              <input
-                type="text"
-                placeholder="123"
-                value={cvc}
-                onChange={(e) => setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                className="w-full rounded-xl px-3 py-2.5 text-sm bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
+          <PaymentElement
+            onReady={() => setReady(true)}
+            options={{ layout: "tabs" }}
+          />
         </div>
 
         {/* Auto Recovery Toggle */}
@@ -191,12 +255,19 @@ const PaymentScreen = ({
 
         {/* Complete Booking Button */}
         <button
-          onClick={onComplete}
-          disabled={!canComplete || isProcessing}
-          className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-colors duration-200"
+          onClick={handleSubmit}
+          disabled={!canPay}
+          className="w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-50 transition-colors duration-200 flex items-center justify-center gap-2"
           style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
         >
-          {isProcessing ? "Processing..." : "Complete Booking"}
+          {paying ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Complete Booking"
+          )}
         </button>
 
         {/* Security badges */}
