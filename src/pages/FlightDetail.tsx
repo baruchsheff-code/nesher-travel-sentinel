@@ -4,6 +4,7 @@ import {
   ArrowLeft, Plane, Shield, Umbrella, Signal, Coffee, Lock,
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
+import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { toast } from "sonner";
 import {
