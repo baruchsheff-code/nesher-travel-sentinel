@@ -16,8 +16,10 @@ const Index = () => {
   const [query, setQuery] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const searchCountRef = useRef(0);
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, tier } = useAuth();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
