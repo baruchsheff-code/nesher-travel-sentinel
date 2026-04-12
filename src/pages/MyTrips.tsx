@@ -138,13 +138,13 @@ const FlightStatusBadge = ({ status }: { status: string | null }) => {
   );
 };
 
-const TripCard = ({ booking }: { booking: Booking }) => {
+const TripCard = ({ booking, onClick }: { booking: Booking; onClick: () => void }) => {
   const firstLeg = booking.booking_legs[0];
   const lastLeg = booking.booking_legs[booking.booking_legs.length - 1];
   const upcoming = isUpcoming(booking);
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-5 space-y-4 animate-fade-in">
+    <div className="bg-card rounded-2xl border border-border p-5 space-y-4 animate-fade-in cursor-pointer hover:border-primary/40 transition-colors" onClick={onClick}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -158,9 +158,12 @@ const TripCard = ({ booking }: { booking: Booking }) => {
             <p className="text-xs text-muted-foreground">{firstLeg?.airline_name} · {firstLeg?.flight_number}</p>
           </div>
         </div>
-        <Badge variant={upcoming ? "default" : "secondary"} className="text-xs">
-          {upcoming ? "Upcoming" : "Past"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={upcoming ? "default" : "secondary"} className="text-xs">
+            {upcoming ? "Upcoming" : "Past"}
+          </Badge>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </div>
       </div>
 
       {/* Legs */}
