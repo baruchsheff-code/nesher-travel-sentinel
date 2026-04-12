@@ -81,12 +81,22 @@ const FlightDetail = () => {
   const durationHours = durationMatch ? parseInt(durationMatch[1]) : 0;
   const showLounge = flight.stops > 0 && durationHours > 3;
 
+  // Seat price lookup
+  const seatPrice = useMemo(() => {
+    if (!selectedSeat) return 0;
+    const row = parseInt(selectedSeat);
+    if (row <= 4) return 25; // premium
+    if (row === 12 || row === 13) return 35; // exit
+    return 0;
+  }, [selectedSeat]);
+
   const extrasTotal =
     (addConnectionGuarantee ? connectionGuaranteeCost : 0) +
     (addInsurance ? insuranceCost : 0) +
     (addEsim ? esimCost : 0) +
     (addLounge ? loungeCost : 0) +
-    (addPriceFreeze ? freezeCost : 0);
+    (addPriceFreeze ? freezeCost : 0) +
+    seatPrice;
 
   const grandTotal = flight.priceUsd + aiFee + extrasTotal;
 
