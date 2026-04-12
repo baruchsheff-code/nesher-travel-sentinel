@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { parseDestination } from "@/lib/destinations";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import TravelChat from "@/components/TravelChat";
 
 const Index = () => {
   const [query, setQuery] = useState("");
