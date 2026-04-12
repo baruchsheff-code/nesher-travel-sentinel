@@ -437,18 +437,8 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       {/* Search button */}
       <button
         onClick={handleSearch}
-        disabled={!origin || !destination || !departDate}
-        className={cn(
-          "w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 rounded-full font-bold text-base transition-all duration-150",
-          origin && destination && departDate
-            ? "hover:brightness-110 hover:scale-[1.02] shadow-lg"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-        style={
-          origin && destination && departDate
-            ? { height: 56, backgroundColor: "#C9A84C", color: "#0A0F1E" }
-            : { height: 56 }
-        }
+        className="w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 rounded-full font-bold text-base transition-all duration-150 hover:brightness-110 hover:scale-[1.02] shadow-lg"
+        style={{ height: 56, backgroundColor: "#C9A84C", color: "#0A0F1E" }}
       >
         <Search size={18} strokeWidth={2.5} />
         Search flights
