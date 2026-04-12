@@ -227,18 +227,25 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
   // Layover airport for 1-stop flights
   const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
 
-  // Duration from slice
+  // Duration from slice — handles PT12H44M and P1DT6H21M
   const durationIso = slice?.duration || "";
-  const durationMatch = durationIso.match(/PT(\d+)H(?:(\d+)M)?/);
-  const durationFormatted = durationMatch
-    ? `${durationMatch[1]}h ${durationMatch[2] || "0"}m`
-    : "—";
+  const dayMatch = durationIso.match(/P(\d+)D/);
+  const hourMatch = durationIso.match(/(\d+)H/);
+  const minMatch = durationIso.match(/(\d+)M/);
+  const totalHours = (dayMatch ? parseInt(dayMatch[1]) * 24 : 0) + (hourMatch ? parseInt(hourMatch[1]) : 0);
+  const totalMins = minMatch ? parseInt(minMatch[1]) : 0;
+  const durationFormatted = totalHours || totalMins ? `${totalHours}h ${totalMins}m` : "—";
+  const durationMinutes = totalHours * 60 + totalMins;
 
   const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
 
   const flightNum = firstSeg?.marketing_carrier_flight_number
     ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
     : "—";
+
+  // Fare breakdown
+  const baseAmount = offer.base_amount ? parseFloat(offer.base_amount) : null;
+  const taxAmount = offer.tax_amount ? parseFloat(offer.tax_amount) : null;
 
   return {
     id: offer.id || `duffel-${index}`,
@@ -252,10 +259,13 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     arrivalTime: arrTime,
     arrivesNextDay: arrDate !== depDate,
     durationFormatted,
+    durationMinutes,
     stops,
     layoverAirport,
     priceUsd: parseFloat(offer.total_amount) || 0,
     totalCurrency: offer.total_currency || "USD",
+    baseAmount,
+    taxAmount,
     prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
     pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
