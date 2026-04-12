@@ -66,7 +66,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect }: { flight: FlightRes
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
 
   return (
-    <div className="rounded-2xl p-4 mb-3 relative" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+    <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
       {/* DEMO badge */}
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <SafetyBadge score={flight.safetyScore} />
