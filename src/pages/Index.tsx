@@ -1,15 +1,55 @@
-import { Search, MessageCircle, Bird } from "lucide-react";
+import { Search, MessageCircle, Bird, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { parseDestination } from "@/lib/destinations";
+import { toast } from "sonner";
 
 const Index = () => {
   const [query, setQuery] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
   const navigate = useNavigate();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    // Simple queries (single destination word) skip AI
+    const directMatch = parseDestination(trimmed);
+    const isSimple = trimmed.split(/\s+/).length <= 2 && directMatch;
+
+    if (isSimple) {
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+      return;
+    }
+
+    // Natural language → AI parsing
+    setIsParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-search", {
+        body: { query: trimmed },
+      });
+
+      if (error) throw error;
+
+      if (data?.destination_city) {
+        const params = new URLSearchParams({ q: data.destination_city });
+        if (data.origin_iata) params.set("origin", data.origin_iata);
+        if (data.travel_date) params.set("date", data.travel_date);
+        if (data.cabin && data.cabin !== "economy") params.set("cabin", data.cabin);
+        if (data.mentioned_card) params.set("card", data.mentioned_card);
+        navigate(`/search?${params.toString()}`);
+      } else {
+        // Fallback to direct search
+        navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+      }
+    } catch (err) {
+      console.error("AI parse error:", err);
+      toast.error("AI parsing failed, searching directly...");
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    } finally {
+      setIsParsing(false);
     }
   };
 
@@ -43,9 +83,13 @@ const Index = () => {
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="w-full mt-8 animate-fade-in-delay-2">
-          <div className="relative rounded-2xl p-[2px] gemini-glow">
+          <div className={`relative rounded-2xl p-[2px] ${isParsing ? "gemini-glow-active" : "gemini-glow"}`}>
             <div className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4 relative z-10">
-              <Search className="text-primary shrink-0" size={22} />
+              {isParsing ? (
+                <Loader2 className="text-primary shrink-0 animate-spin" size={22} />
+              ) : (
+                <Search className="text-primary shrink-0" size={22} />
+              )}
               <input
                 type="text"
                 value={query}
@@ -53,9 +97,15 @@ const Index = () => {
                 placeholder="Where do you want to go?"
                 className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none"
                 style={{ fontSize: 16, fontFamily: "Inter, sans-serif" }}
+                disabled={isParsing}
               />
             </div>
           </div>
+          {isParsing && (
+            <p className="text-center text-xs mt-3 animate-pulse" style={{ color: "hsl(var(--primary))" }}>
+              AI is searching...
+            </p>
+          )}
         </form>
 
         {/* Trust Badges */}

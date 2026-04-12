@@ -178,6 +178,9 @@ const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get("q") || "";
+  const originParam = searchParams.get("origin");
+  const dateParam = searchParams.get("date");
+  const cardParam = searchParams.get("card");
   const [activeTab, setActiveTab] = useState<Tab>("best");
 
   const destination = useMemo(() => parseDestination(query), [query]);
