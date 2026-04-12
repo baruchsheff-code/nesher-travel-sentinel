@@ -10,6 +10,7 @@ import TravelChat from "@/components/TravelChat";
 const Index = () => {
   const [query, setQuery] = useState("");
   const [isParsing, setIsParsing] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
