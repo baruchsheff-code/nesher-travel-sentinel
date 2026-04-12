@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import OfflineBanner from "@/components/OfflineBanner";
-import { NotificationProvider } from "@/contexts/NotificationContext";
 import Index from "./pages/Index.tsx";
 import SearchResults from "./pages/SearchResults.tsx";
 import FlightDetail from "./pages/FlightDetail.tsx";
