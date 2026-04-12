@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar,
   Loader2, RefreshCw, X, QrCode, Headphones, MessageCircle, Shield, ChevronRight,
-  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand, Download, WifiOff
+  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand, Download, WifiOff, Bird
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -593,7 +593,11 @@ const MyTrips = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="px-4 pt-6 pb-2 flex items-center justify-between animate-fade-in">
-        <h1 className="text-xl font-bold text-foreground">My Trips</h1>
+        <div className="flex items-center gap-2">
+          <Bird className="text-primary shrink-0" size={22} strokeWidth={2.5} />
+          <span className="text-primary font-bold text-sm">Nesher</span>
+          <h1 className="text-xl font-bold text-foreground">My Trips</h1>
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={() => fetchBookings(true)} disabled={isRefreshing} className="p-2 rounded-full hover:bg-card transition-colors">
             <RefreshCw size={16} className={`text-muted-foreground ${isRefreshing ? "animate-spin" : ""}`} />
@@ -627,9 +631,10 @@ const MyTrips = () => {
             <TabsContent value="upcoming" className="mt-4 space-y-4">
               {upcoming.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
-                  <MapPin size={40} className="text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-muted-foreground text-sm">No upcoming trips</p>
-                  <button onClick={() => navigate("/")} className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold" style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}>
+                  <Plane size={48} className="text-primary mx-auto opacity-30" />
+                  <p className="text-lg font-semibold text-foreground">Your next adventure starts here</p>
+                  <p className="text-sm text-muted-foreground">Search flights and book your first trip</p>
+                  <button onClick={() => navigate("/")} className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground">
                     Search Flights
                   </button>
                 </div>
