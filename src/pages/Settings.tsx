@@ -236,6 +236,7 @@ const Settings = () => {
             <p className="text-xs text-muted-foreground">{user?.email}</p>
             <TierBadge tier={tier} />
           </div>
+        </div>
 
         {/* Notifications */}
         <SectionHeader icon={Bell} title="Notifications" />
