@@ -106,7 +106,7 @@ const Index = () => {
           className="text-muted-foreground text-center mt-4 animate-fade-in-delay-2"
           style={{ fontSize: 16 }}
         >
-          Your AI travel agent — licensed, intelligent, always watching.
+          Your AI travel agent — licensed, intelligent, always looking out for you.
         </p>
 
         {/* Search Bar */}
