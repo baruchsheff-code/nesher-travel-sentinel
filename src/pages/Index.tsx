@@ -75,7 +75,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col px-4 relative">
       {/* Top bar */}
-      <div className="pt-6 flex items-center justify-between animate-fade-in">
+      <div className="pt-6 flex items-center justify-between animate-fade-in relative z-20">
         <div className="flex items-center gap-2">
           <span className="text-primary"><NesherLogo /></span>
           <span className="text-primary font-bold text-2xl sm:text-[32px]">Nesher</span>
