@@ -238,6 +238,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
     if (tripType === "round-trip") {
       if (calendarFor === "depart") {
         setDepartDate(d);
+        setErrors(e => ({ ...e, departDate: false }));
         if (returnDate && isBefore(returnDate, d)) setReturnDate(null);
         setCalendarFor("return");
       } else {
@@ -250,6 +251,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       }
     } else {
       setDepartDate(d);
+      setErrors(e => ({ ...e, departDate: false }));
       setShowCalendar(false);
     }
   };
