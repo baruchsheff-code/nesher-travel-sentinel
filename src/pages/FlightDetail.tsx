@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -22,6 +24,7 @@ const COUNTRY_MAP: Record<string, string> = {
 const FlightDetail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const flightId = searchParams.get("id") || "";
   const dest = searchParams.get("dest") || "";
 
@@ -92,10 +95,60 @@ const FlightDetail = () => {
   const handlePassengerSubmit = async (data: PassengerData) => {
     setPassengerData(data);
     setIsBooking(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsBooking(false);
-    setBookingComplete(true);
-    toast.success("Booking confirmed! (Demo)");
+
+    try {
+      if (user) {
+        // Insert booking
+        const { data: bookingRow, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            user_id: user.id,
+            booking_status: "confirmed",
+            booking_type: "one_way",
+            total_price_usd: grandTotal,
+            is_self_transfer: flight.isSplitTicket || false,
+            ticket_count: 1,
+            curation_fee_usd: aiFee,
+            insurance_fee_usd: addInsurance ? insuranceCost : null,
+            connection_guarantee_fee_usd: addConnectionGuarantee ? connectionGuaranteeCost : null,
+          })
+          .select("id")
+          .single();
+
+        if (bookingError) throw bookingError;
+
+        // Insert booking leg
+        const departureDate = new Date(Date.now() + 5 * 86400000);
+        const durationMs = (durationHours || 10) * 3600000;
+
+        await supabase.from("booking_legs").insert({
+          booking_id: bookingRow.id,
+          airline_name: flight.airlineName,
+          airline_code: flight.airlineCode,
+          flight_number: flight.flightNumber,
+          origin_iata: flight.originIata,
+          destination_iata: flight.destinationIata,
+          departure_time: departureDate.toISOString(),
+          arrival_time: new Date(departureDate.getTime() + durationMs).toISOString(),
+          flight_status: "scheduled",
+          leg_number: 1,
+          seat_number: `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
+          pnr: `NSH${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          gate: `${["A", "B", "C", "D"][Math.floor(Math.random() * 4)]}${Math.floor(Math.random() * 30) + 1}`,
+          terminal: String(Math.floor(Math.random() * 4) + 1),
+        });
+      }
+
+      // Brief delay for UX
+      await new Promise((r) => setTimeout(r, 800));
+      setIsBooking(false);
+      setBookingComplete(true);
+      toast.success("Booking confirmed!");
+    } catch (err) {
+      console.error("Booking error:", err);
+      setIsBooking(false);
+      toast.error("Booking failed. Please try again.");
+    }
   };
 
   if (showPassengerForm && !bookingComplete) {
