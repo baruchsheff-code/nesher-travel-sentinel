@@ -89,12 +89,17 @@
 
 .gemini-glow {
   position: relative;
+  background: hsl(var(--border));
+  border-radius: 1rem;
+  transition: background 0.3s ease;
+}
+
+.gemini-glow:focus-within {
   background: conic-gradient(
     from var(--gemini-angle),
     #4285f4, #ea4335, #fbbc04, #34a853, #4285f4
   );
   animation: gemini-border-rotate 3s linear infinite;
-  border-radius: 1rem;
 }
 
 .gemini-glow::before {
@@ -106,6 +111,12 @@
     from var(--gemini-angle),
     #4285f4, #ea4335, #fbbc04, #34a853, #4285f4
   );
-  animation: gemini-pulse 2s ease-in-out infinite;
   z-index: 0;
+  opacity: 0;
+  filter: blur(6px);
+  transition: opacity 0.3s ease;
+}
+
+.gemini-glow:focus-within::before {
+  animation: gemini-pulse 2s ease-in-out infinite;
 }
