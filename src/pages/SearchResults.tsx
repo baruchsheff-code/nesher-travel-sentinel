@@ -484,9 +484,8 @@ const SearchResults = () => {
         )}
 
         <p className="text-sm font-semibold mt-2 text-foreground">
-          {sortedFlights.length} flights found · {destination.city}{destination.country ? `, ${destination.country}` : ""}{formattedDate ? ` · ${formattedDate}` : ""}
-          {apiSource === "mock" && <span className="text-xs text-muted-foreground ml-2">(Demo data)</span>}
-          {apiSource === "duffel" && <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>}
+          {sortedFlights.length} flights found · {findDestByIata(originIata)?.city || originIata} → {destination.city}{destination.country ? `, ${destination.country}` : ""}{formattedDate ? ` · ${formattedDate}` : ""}
+          <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>
         </p>
       </div>
 
