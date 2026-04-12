@@ -1,4 +1,4 @@
-import { Search, MessageCircle, Bird, Loader2, User, LogOut } from "lucide-react";
+import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +71,9 @@ const Index = () => {
         </div>
         {user ? (
           <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/my-trips")} className="p-2 rounded-full hover:bg-card transition-colors" aria-label="My Trips">
+              <Briefcase size={18} className="text-muted-foreground" />
+            </button>
             <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
               <User size={16} className="text-muted-foreground" />
             </div>
