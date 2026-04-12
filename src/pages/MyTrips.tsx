@@ -168,10 +168,48 @@ const TripCard = ({ booking, onDetail }: { booking: Booking; onDetail: () => voi
   const countdown = getCountdown(firstLeg?.departure_time);
   const disrupted = isDisrupted(status);
   const upcoming = isUpcoming(booking);
+  const { isOffline } = useOffline();
 
   const [showChangeGate, setShowChangeGate] = useState(false);
   const [findingAlts, setFindingAlts] = useState(false);
   const [showAlts, setShowAlts] = useState(false);
+  const [offlineData, setOfflineData] = useState<OfflineTripData | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Load offline data on mount
+  useEffect(() => {
+    getTripOffline(booking.id).then((d) => setOfflineData(d));
+  }, [booking.id]);
+
+  // Auto-sync upcoming trips
+  useEffect(() => {
+    if (upcoming && !offlineData && !isOffline) {
+      handleSync();
+    }
+  }, [upcoming, isOffline]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const data = buildOfflineTripData(booking);
+      await saveTripOffline(data);
+      setOfflineData(data);
+      toast.success("Trip saved offline");
+    } catch (err) {
+      console.error("Sync error:", err);
+      toast.error("Failed to save offline");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncAgo = offlineData ? (() => {
+    const diff = Date.now() - new Date(offlineData.lastSynced).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins} min ago`;
+    return `${Math.floor(mins / 60)}h ago`;
+  })() : null;
 
   // Auto-expand disrupted cards
   useEffect(() => {
