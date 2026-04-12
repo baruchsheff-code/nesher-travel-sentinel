@@ -11,6 +11,7 @@ import FlightDetail from "./pages/FlightDetail.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import MyTrips from "./pages/MyTrips.tsx";
+import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/search" element={<SearchResults />} />
             <Route path="/flight" element={<FlightDetail />} />
             <Route path="/my-trips" element={<MyTrips />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

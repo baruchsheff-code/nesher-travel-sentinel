@@ -76,9 +76,9 @@ const Index = () => {
             <button onClick={() => navigate("/my-trips")} className="p-2 rounded-full hover:bg-card transition-colors" aria-label="My Trips">
               <Briefcase size={18} className="text-muted-foreground" />
             </button>
-            <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+            <button onClick={() => navigate("/settings")} className="rounded-full flex items-center justify-center hover:ring-2 hover:ring-primary/30 transition-all" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
               <User size={16} className="text-muted-foreground" />
-            </div>
+            </button>
             <button onClick={handleSignOut} className="p-2 rounded-full hover:bg-card transition-colors">
               <LogOut size={16} className="text-muted-foreground" />
             </button>
