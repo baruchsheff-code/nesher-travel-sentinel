@@ -4,6 +4,7 @@ import {
   ArrowLeft, Plane, Shield, Umbrella, Signal, Coffee, Lock,
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
+import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { toast } from "sonner";
 import {
@@ -31,6 +32,8 @@ const FlightDetail = () => {
 
   const [isBooking, setIsBooking] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
+  const [showPassengerForm, setShowPassengerForm] = useState(false);
+  const [passengerData, setPassengerData] = useState<PassengerData | null>(null);
 
   // Add-on toggles
   const [addConnectionGuarantee, setAddConnectionGuarantee] = useState(false);
@@ -82,13 +85,29 @@ const FlightDetail = () => {
 
   const grandTotal = flight.priceUsd + aiFee + extrasTotal;
 
-  const handleBook = async () => {
+  const handleBookClick = () => {
+    setShowPassengerForm(true);
+  };
+
+  const handlePassengerSubmit = async (data: PassengerData) => {
+    setPassengerData(data);
     setIsBooking(true);
     await new Promise((r) => setTimeout(r, 2000));
     setIsBooking(false);
     setBookingComplete(true);
     toast.success("Booking confirmed! (Demo)");
   };
+
+  if (showPassengerForm && !bookingComplete) {
+    return (
+      <PassengerForm
+        grandTotal={grandTotal}
+        onSubmit={handlePassengerSubmit}
+        onBack={() => setShowPassengerForm(false)}
+        isSubmitting={isBooking}
+      />
+    );
+  }
 
   if (bookingComplete) {
     return (
@@ -100,6 +119,11 @@ const FlightDetail = () => {
         <p className="text-sm text-muted-foreground mt-2 text-center">
           {flight.airlineName} {flight.flightNumber} · {flight.originIata} → {flight.destinationIata}
         </p>
+        {passengerData && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {passengerData.firstName} {passengerData.lastName}
+          </p>
+        )}
         <div className="rounded-2xl p-4 mt-6 w-full max-w-sm" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Confirmation</span>
@@ -334,7 +358,7 @@ const FlightDetail = () => {
         {/* 4. BOOK BUTTON - Fixed bottom */}
         <div className="fixed bottom-0 left-0 right-0 px-4 py-4 z-30 bg-background border-t border-border">
           <button
-            onClick={handleBook}
+            onClick={handleBookClick}
             disabled={isBooking}
             className="w-full py-3.5 rounded-2xl text-sm font-semibold flex flex-col items-center justify-center gap-0.5 disabled:opacity-60"
             style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
