@@ -192,6 +192,7 @@ const SearchResults = () => {
   const dateParam = searchParams.get("date");
   const cardParam = searchParams.get("card");
   const [activeTab, setActiveTab] = useState<Tab>("best");
+  const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
 
   const destination = useMemo(() => parseDestination(query), [query]);
   const flights = useMemo(
@@ -293,10 +294,23 @@ const SearchResults = () => {
               flight={flight}
               isHiddenBySkiplag={isHiddenBySkiplag}
               onSelect={() => handleSelectFlight(flight)}
+              onWatch={() => setWatchFlight(flight)}
             />
           );
         })}
       </div>
+
+      {watchFlight && destination && (
+        <PriceWatchModal
+          open={!!watchFlight}
+          onClose={() => setWatchFlight(null)}
+          originIata={watchFlight.originIata}
+          destinationIata={destination.iata}
+          currentPrice={watchFlight.priceUsd}
+          prediction={watchFlight.prediction}
+          predictionConfidence={watchFlight.predictionConfidence}
+        />
+      )}
     </div>
   );
 };
