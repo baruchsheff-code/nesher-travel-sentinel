@@ -45,7 +45,7 @@ const SafetyBadge = ({ score }: { score: number }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag }: { flight: FlightResult; isHiddenBySkiplag?: boolean }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
