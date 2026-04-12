@@ -1,6 +1,8 @@
 import { Search, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
+import NesherHeader from "@/components/NesherHeader";
+import { HomeOnboarding } from "@/components/OnboardingTooltips";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +12,6 @@ import { toast } from "sonner";
 import TravelChat from "@/components/TravelChat";
 import PriceWatchDashboard from "@/components/PriceWatchDashboard";
 import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
-import TierBadge from "@/components/TierBadge";
 
 const Index = () => {
   const [query, setQuery] = useState("");
@@ -75,8 +76,8 @@ const Index = () => {
       {/* Top bar */}
       <div className="pt-6 flex items-center justify-between animate-fade-in">
         <div className="flex items-center gap-2">
-          <Bird className="text-primary" size={28} strokeWidth={2.5} />
-          <span className="text-primary font-bold" style={{ fontSize: 32 }}>
+          <Bird className="text-primary shrink-0" size={28} strokeWidth={2.5} />
+          <span className="text-primary font-bold text-2xl sm:text-[32px]">
             Nesher
           </span>
         </div>
@@ -86,7 +87,7 @@ const Index = () => {
             <button onClick={() => navigate("/my-trips")} className="p-2 rounded-full hover:bg-card transition-colors" aria-label="My Trips">
               <Briefcase size={18} className="text-muted-foreground" />
             </button>
-            <button onClick={() => navigate("/settings")} className="rounded-full flex items-center justify-center hover:ring-2 hover:ring-primary/30 transition-all" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+            <button onClick={() => navigate("/settings")} className="rounded-full flex items-center justify-center hover:ring-2 hover:ring-primary/30 transition-all shrink-0" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
               <User size={16} className="text-muted-foreground" />
             </button>
             <button onClick={handleSignOut} className="p-2 rounded-full hover:bg-card transition-colors">
@@ -99,21 +100,19 @@ const Index = () => {
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center -mt-12">
         <h1
-          className="text-foreground font-bold text-center leading-tight animate-fade-in-delay-1"
-          style={{ fontSize: 36 }}
+          className="text-foreground font-bold text-center leading-tight animate-fade-in-delay-1 text-[28px] sm:text-[36px]"
         >
           Book smarter. Travel safer. Recover faster.
         </h1>
 
         <p
-          className="text-muted-foreground text-center mt-4 animate-fade-in-delay-2"
-          style={{ fontSize: 16 }}
+          className="text-muted-foreground text-center mt-4 animate-fade-in-delay-2 text-sm sm:text-base"
         >
           Your AI travel agent — licensed, intelligent, always looking out for you.
         </p>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="w-full mt-8 animate-fade-in-delay-2">
+        <form onSubmit={handleSearch} className="w-full mt-8 animate-fade-in-delay-2" data-onboarding="search">
           <div className={`relative rounded-2xl p-[2px] ${isParsing ? "gemini-glow-active" : "gemini-glow"}`}>
             <div className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4 relative z-10">
               {isParsing ? (
@@ -126,30 +125,30 @@ const Index = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Where do you want to go?"
-                className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none"
-                style={{ fontSize: 16, fontFamily: "Inter, sans-serif" }}
+                className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none text-base"
+                style={{ fontFamily: "Inter, sans-serif" }}
                 disabled={isParsing}
               />
             </div>
           </div>
           {isParsing && (
-            <p className="text-center text-xs mt-3 animate-pulse" style={{ color: "hsl(var(--primary))" }}>
+            <p className="text-center text-xs mt-3 animate-pulse text-primary">
               AI is searching...
             </p>
           )}
         </form>
 
         {/* Trust Badges */}
-        <div className="flex items-center justify-center gap-0 mt-6 animate-fade-in-delay-3">
-          <span className="text-muted-foreground" style={{ fontSize: 13 }}>
+        <div className="flex items-center justify-center gap-0 mt-6 animate-fade-in-delay-3 flex-wrap">
+          <span className="text-muted-foreground text-xs sm:text-[13px]">
             🛡️ Licensed Agent
           </span>
-          <span className="text-muted-foreground mx-3 opacity-40">|</span>
-          <span className="text-muted-foreground" style={{ fontSize: 13 }}>
+          <span className="text-muted-foreground mx-2 sm:mx-3 opacity-40">|</span>
+          <span className="text-muted-foreground text-xs sm:text-[13px]">
             📡 Live Crisis Intel
           </span>
-          <span className="text-muted-foreground mx-3 opacity-40">|</span>
-          <span className="text-muted-foreground" style={{ fontSize: 13 }}>
+          <span className="text-muted-foreground mx-2 sm:mx-3 opacity-40">|</span>
+          <span className="text-muted-foreground text-xs sm:text-[13px]">
             👤 24/7 Human Backup
           </span>
         </div>
@@ -158,6 +157,8 @@ const Index = () => {
         <PriceWatchDashboard />
       </div>
 
+      {/* Onboarding tooltip */}
+      <HomeOnboarding />
 
       {/* AI Chat */}
       <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />

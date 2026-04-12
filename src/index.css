@@ -144,3 +144,42 @@
   filter: blur(8px);
   animation: gemini-pulse 1.5s ease-in-out infinite;
 }
+
+/* Splash screen animations */
+@keyframes splash-pulse {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splash-text {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.splash-icon-pulse {
+  animation: splash-pulse 0.8s ease-out forwards;
+}
+
+.splash-text-fade {
+  opacity: 0;
+  animation: splash-text 0.5s ease-out 0.5s forwards;
+}
+
+/* Red pulsing dot for emergencies */
+@keyframes emergency-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 1.125rem;
+  background: conic-gradient(
+    from var(--gemini-angle),
+    hsl(var(--primary)), #C9A84C, hsl(var(--primary)), #C9A84C, hsl(var(--primary))
+  );
+  z-index: 0;
+  filter: blur(8px);
+  animation: gemini-pulse 1.5s ease-in-out infinite;
+}
