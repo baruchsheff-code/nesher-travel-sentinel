@@ -11,8 +11,9 @@ import TierBadge from "@/components/TierBadge";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, signOut, loading: authLoading, tier } = useAuth();
+  const { user, signOut, loading: authLoading, tier, subscribed, subscriptionEnd } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   // Profile
   const [fullName, setFullName] = useState("");
