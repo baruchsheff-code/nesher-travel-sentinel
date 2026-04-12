@@ -5,6 +5,8 @@ import {
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
+import PaymentScreen from "@/components/PaymentScreen";
+import BookingConfirmation from "@/components/BookingConfirmation";
 import SeatSelector from "@/components/SeatSelector";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +39,10 @@ const FlightDetail = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [showPassengerForm, setShowPassengerForm] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [passengerData, setPassengerData] = useState<PassengerData | null>(null);
+  const [bookingPnr, setBookingPnr] = useState("");
+  const [bookingPnr2, setBookingPnr2] = useState<string | undefined>();
 
   // Add-on toggles
   const [addConnectionGuarantee, setAddConnectionGuarantee] = useState(false);
@@ -104,13 +109,20 @@ const FlightDetail = () => {
     setShowPassengerForm(true);
   };
 
-  const handlePassengerSubmit = async (data: PassengerData) => {
+  const handlePassengerSubmit = (data: PassengerData) => {
     setPassengerData(data);
+    setShowPayment(true);
+  };
+
+  const generatePnr = () => `NSH${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+  const handlePaymentComplete = async () => {
     setIsBooking(true);
+    const pnr1 = generatePnr();
+    const pnr2 = flight.isSplitTicket ? generatePnr() : undefined;
 
     try {
       if (user) {
-        // Insert booking
         const { data: bookingRow, error: bookingError } = await supabase
           .from("bookings")
           .insert({
@@ -129,7 +141,6 @@ const FlightDetail = () => {
 
         if (bookingError) throw bookingError;
 
-        // Insert booking leg
         const departureDate = new Date(Date.now() + 5 * 86400000);
         const durationMs = (durationHours || 10) * 3600000;
 
@@ -145,14 +156,15 @@ const FlightDetail = () => {
           flight_status: "scheduled",
           leg_number: 1,
           seat_number: selectedSeat || `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
-          pnr: `NSH${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          pnr: pnr1,
           gate: `${["A", "B", "C", "D"][Math.floor(Math.random() * 4)]}${Math.floor(Math.random() * 30) + 1}`,
           terminal: String(Math.floor(Math.random() * 4) + 1),
         });
       }
 
-      // Brief delay for UX
       await new Promise((r) => setTimeout(r, 800));
+      setBookingPnr(pnr1);
+      setBookingPnr2(pnr2);
       setIsBooking(false);
       setBookingComplete(true);
       toast.success("Booking confirmed!");
@@ -163,54 +175,47 @@ const FlightDetail = () => {
     }
   };
 
-  if (showPassengerForm && !bookingComplete) {
+  if (showPayment && !bookingComplete) {
+    return (
+      <PaymentScreen
+        grandTotal={grandTotal}
+        baseFare={baseFare}
+        taxes={taxes}
+        aiFee={aiFee}
+        extrasTotal={extrasTotal}
+        seatPrice={seatPrice}
+        onBack={() => setShowPayment(false)}
+        onComplete={handlePaymentComplete}
+        isProcessing={isBooking}
+      />
+    );
+  }
+
+  if (showPassengerForm && !showPayment && !bookingComplete) {
     return (
       <PassengerForm
         grandTotal={grandTotal}
         onSubmit={handlePassengerSubmit}
         onBack={() => setShowPassengerForm(false)}
-        isSubmitting={isBooking}
+        isSubmitting={false}
       />
     );
   }
 
   if (bookingComplete) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 animate-fade-in">
-        <div className="rounded-full p-4 mb-6" style={{ backgroundColor: "rgba(34, 197, 94, 0.15)" }}>
-          <CheckCircle2 size={48} style={{ color: "#22C55E" }} />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground text-center">Booking Confirmed</h1>
-        <p className="text-sm text-muted-foreground mt-2 text-center">
-          {flight.airlineName} {flight.flightNumber} · {flight.originIata} → {flight.destinationIata}
-        </p>
-        {passengerData && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {passengerData.firstName} {passengerData.lastName}
-          </p>
-        )}
-        <div className="rounded-2xl p-4 mt-6 w-full max-w-sm" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Confirmation</span>
-            <span className="font-bold text-foreground">NSHRDEMO42</span>
-          </div>
-          <div className="flex justify-between text-sm mt-2">
-            <span className="text-muted-foreground">Total Charged</span>
-            <span className="font-bold text-primary">${grandTotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm mt-2">
-            <span className="text-muted-foreground">Points Earned</span>
-            <span className="font-bold text-foreground">{flight.pointsEarn.toLocaleString()} pts</span>
-          </div>
-        </div>
-        <span className="text-[10px] mt-3 px-2 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>
-        <button
-          onClick={() => navigate("/")}
-          className="mt-8 px-6 py-3 rounded-2xl text-sm font-semibold bg-primary text-primary-foreground"
-        >
-          Back to Home
-        </button>
-      </div>
+      <BookingConfirmation
+        flight={flight}
+        firstName={passengerData?.firstName || "Traveler"}
+        grandTotal={grandTotal}
+        pnr={bookingPnr}
+        pnr2={bookingPnr2}
+        selectedSeat={selectedSeat}
+        addEsim={addEsim}
+        addLounge={addLounge}
+        onViewTrip={() => navigate("/my-trips")}
+        onGoHome={() => navigate("/")}
+      />
     );
   }
 
