@@ -29,6 +29,8 @@ const PassengerForm = ({ grandTotal, onSubmit, onBack, isSubmitting }: Passenger
     nationality: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof PassengerData, string>>>({});
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
