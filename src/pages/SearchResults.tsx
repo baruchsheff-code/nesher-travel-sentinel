@@ -515,7 +515,6 @@ const SearchResults = () => {
               key={flight.id}
               flight={flight}
               isHiddenBySkiplag={isHiddenBySkiplag}
-              apiSource={apiSource}
               onSelect={() => handleSelectFlight(flight)}
               onWatch={() => setWatchFlight(flight)}
             />
