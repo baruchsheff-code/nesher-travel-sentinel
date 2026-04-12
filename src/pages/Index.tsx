@@ -1,4 +1,4 @@
-import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
+import { Search, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import { useState, useRef } from "react";
