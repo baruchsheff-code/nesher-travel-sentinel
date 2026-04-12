@@ -308,8 +308,6 @@ const SearchResults = () => {
     sp.set("tripType", params.tripType);
     navigate(`/search?${sp.toString()}`);
     setEditSearch(false);
-    setLoading(true);
-    setTimeout(() => setLoading(false), 2500);
   };
 
   const recentAirlines = ["UA"];
