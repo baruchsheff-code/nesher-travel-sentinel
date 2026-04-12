@@ -22,6 +22,7 @@ export interface FlightResult {
   isSplitTicket: boolean;
   splitDetails?: string;
   isResilientCarrier: boolean;
+  layoverAirport?: string;
 }
 
 export function getMockFlightsForDestination(destinationIata: string): FlightResult[] {

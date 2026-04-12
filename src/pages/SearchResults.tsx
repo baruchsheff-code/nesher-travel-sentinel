@@ -51,7 +51,7 @@ const SafetyBadge = ({ score }: { score: number }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; apiSource?: "duffel" | "mock" }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
@@ -69,7 +69,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <SafetyBadge score={flight.safetyScore} />
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>
+        {apiSource === "mock" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>}
       </div>
 
       {flight.isSkiplag && (
@@ -103,7 +103,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
             <Plane size={14} className="text-muted-foreground" />
             <div className="flex-1 h-px bg-border" />
           </div>
-          <p className="text-[11px] text-muted-foreground">{flight.stops === 0 ? "Nonstop" : `${flight.stops} stop`}</p>
+          <p className="text-[11px] text-muted-foreground">{flight.stops === 0 ? "Nonstop" : flight.stops === 1 ? `1 stop${flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}` : `${flight.stops} stops`}</p>
         </div>
         <div className="text-center">
           <p className="text-xl font-bold text-foreground">
@@ -167,39 +167,52 @@ function findDestByIata(iata: string): Destination | null {
 // Transform Duffel offer into FlightResult
 function transformDuffelOffer(offer: any, index: number): FlightResult {
   const slice = offer.slices?.[0];
-  const segment = slice?.segments?.[0];
-  const carrier = segment?.operating_carrier || segment?.marketing_carrier || {};
-  
-  const depTime = segment?.departing_at ? format(new Date(segment.departing_at), "HH:mm") : "00:00";
-  const arrTime = segment?.arriving_at ? format(new Date(segment.arriving_at), "HH:mm") : "00:00";
-  const depDate = segment?.departing_at ? new Date(segment.departing_at).getDate() : 0;
-  const arrDate = segment?.arriving_at ? new Date(segment.arriving_at).getDate() : 0;
-  
-  const totalSegments = slice?.segments?.length || 1;
-  const stops = totalSegments - 1;
-  
+  const segments = slice?.segments || [];
+  const firstSeg = segments[0];
+  const lastSeg = segments[segments.length - 1];
+
+  // Prefer offer.owner for airline info (more reliable than segment carrier)
+  const owner = offer.owner || {};
+  const airlineCode = owner.iata_code || firstSeg?.operating_carrier?.iata_code || firstSeg?.marketing_carrier?.iata_code || "??";
+  const airlineName = owner.name || firstSeg?.operating_carrier?.name || "Unknown Airline";
+
+  const depTime = firstSeg?.departing_at ? format(new Date(firstSeg.departing_at), "HH:mm") : "00:00";
+  const arrTime = lastSeg?.arriving_at ? format(new Date(lastSeg.arriving_at), "HH:mm") : "00:00";
+  const depDate = firstSeg?.departing_at ? new Date(firstSeg.departing_at).getDate() : 0;
+  const arrDate = lastSeg?.arriving_at ? new Date(lastSeg.arriving_at).getDate() : 0;
+
+  const stops = Math.max(segments.length - 1, 0);
+
+  // Layover airport for 1-stop flights
+  const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
+
   // Duration from slice
   const durationIso = slice?.duration || "";
   const durationMatch = durationIso.match(/PT(\d+)H(?:(\d+)M)?/);
-  const durationFormatted = durationMatch 
-    ? `${durationMatch[1]}h ${durationMatch[2] || "0"}m` 
+  const durationFormatted = durationMatch
+    ? `${durationMatch[1]}h ${durationMatch[2] || "0"}m`
     : "—";
 
   const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
 
+  const flightNum = firstSeg?.marketing_carrier_flight_number
+    ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
+    : "—";
+
   return {
     id: offer.id || `duffel-${index}`,
-    airlineCode: carrier.iata_code || "??",
-    airlineName: carrier.name || "Unknown Airline",
-    flightNumber: segment?.marketing_carrier_flight_number ? `${carrier.iata_code || ""}${segment.marketing_carrier_flight_number}` : "—",
+    airlineCode,
+    airlineName,
+    flightNumber: flightNum,
     cabinClass: cabinMap[offer.cabin_class] || offer.cabin_class || "Economy",
-    originIata: segment?.origin?.iata_code || slice?.origin?.iata_code || "???",
-    destinationIata: slice?.segments?.[totalSegments - 1]?.destination?.iata_code || "???",
+    originIata: firstSeg?.origin?.iata_code || slice?.origin?.iata_code || "???",
+    destinationIata: lastSeg?.destination?.iata_code || slice?.destination?.iata_code || "???",
     departureTime: depTime,
     arrivalTime: arrTime,
     arrivesNextDay: arrDate !== depDate,
     durationFormatted,
     stops,
+    layoverAirport,
     priceUsd: parseFloat(offer.total_amount) || 0,
     prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
@@ -276,7 +289,7 @@ const SearchResults = () => {
       }
     } catch (err) {
       console.error("Duffel API error, falling back to mock:", err);
-      toast.error("Live search unavailable — showing sample results");
+      toast.error("Having trouble loading live fares. Showing sample results.");
       setFlights(getMockFlightsForDestination(destination.iata));
       setApiSource("mock");
     } finally {
@@ -418,6 +431,7 @@ const SearchResults = () => {
               key={flight.id}
               flight={flight}
               isHiddenBySkiplag={isHiddenBySkiplag}
+              apiSource={apiSource}
               onSelect={() => handleSelectFlight(flight)}
               onWatch={() => setWatchFlight(flight)}
             />
