@@ -49,6 +49,15 @@ const FlightDetail = () => {
   const [addAutoRecovery, setAddAutoRecovery] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
 
+  // Seat price lookup
+  const seatPrice = useMemo(() => {
+    if (!selectedSeat) return 0;
+    const row = parseInt(selectedSeat);
+    if (row <= 4) return 25; // premium
+    if (row === 12 || row === 13) return 35; // exit
+    return 0;
+  }, [selectedSeat]);
+
   // Mock states
   const hasPassport = false;
   const hasCardMandate = false;
@@ -80,15 +89,6 @@ const FlightDetail = () => {
   const durationMatch = flight.durationFormatted.match(/(\d+)h/);
   const durationHours = durationMatch ? parseInt(durationMatch[1]) : 0;
   const showLounge = flight.stops > 0 && durationHours > 3;
-
-  // Seat price lookup
-  const seatPrice = useMemo(() => {
-    if (!selectedSeat) return 0;
-    const row = parseInt(selectedSeat);
-    if (row <= 4) return 25; // premium
-    if (row === 12 || row === 13) return 35; // exit
-    return 0;
-  }, [selectedSeat]);
 
   const extrasTotal =
     (addConnectionGuarantee ? connectionGuaranteeCost : 0) +
