@@ -64,7 +64,10 @@ const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
     <div ref={ref} className="relative flex-1 min-w-0">
       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">{label}</label>
       <div
-        className="input-gold-focus flex items-center gap-2 bg-input border border-border rounded-2xl px-3 cursor-text hover:border-primary/40 transition-all duration-150"
+        className={cn(
+          "input-gold-focus flex items-center gap-2 bg-input border rounded-2xl px-3 cursor-text hover:border-primary/40 transition-all duration-150",
+          hasError ? "border-destructive ring-1 ring-destructive/30" : "border-border"
+        )}
         style={{ height: 56 }}
         onClick={() => { if (!open) setOpen(true); }}
       >
