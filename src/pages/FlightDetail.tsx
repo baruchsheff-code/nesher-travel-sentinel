@@ -1,7 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import {
-  ArrowLeft, Plane, Shield, Umbrella, Signal, Coffee, Lock,
+  ArrowLeft, Plane, Shield, Umbrella, Signal, Coffee, Lock, Bird,
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
@@ -228,6 +228,7 @@ const FlightDetail = () => {
             <button onClick={() => navigate(-1)} className="shrink-0">
               <ArrowLeft size={22} className="text-foreground" />
             </button>
+            <Bird className="text-primary shrink-0" size={20} strokeWidth={2.5} />
             <h1 className="text-base font-semibold text-foreground truncate flex-1">Flight Details</h1>
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>
           </div>

@@ -1,5 +1,5 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird } from "lucide-react";
 import { parseDestination, MOCK_SAFETY } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo } from "react";
@@ -242,23 +242,24 @@ const SearchResults = () => {
   return (
     <div className="min-h-screen bg-background pb-8 animate-fade-in">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 px-4 pt-4 pb-3" style={{ backgroundColor: "hsl(var(--background))" }}>
+      <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="shrink-0">
-            <ArrowLeft size={22} style={{ color: "hsl(var(--foreground))" }} />
+            <ArrowLeft size={22} className="text-foreground" />
           </button>
+          <Bird className="text-primary shrink-0" size={20} strokeWidth={2.5} />
+          <span className="text-primary font-bold text-sm">Nesher</span>
           <button
             onClick={() => navigate("/")}
-            className="flex-1 rounded-full px-4 py-2 text-sm text-left truncate"
-            style={{ backgroundColor: "hsl(var(--card))", color: "hsl(var(--foreground))", border: "1px solid hsl(var(--border))" }}
+            className="flex-1 rounded-full px-3 py-2 text-sm text-left truncate min-w-0 bg-card text-foreground border border-border"
           >
             {query}
           </button>
         </div>
-        <p className="text-sm font-semibold mt-3" style={{ color: "hsl(var(--foreground))" }}>
+        <p className="text-sm font-semibold mt-3 text-foreground">
           {sortedFlights.length} flights to {destination.city}, {destination.country}
         </p>
-        <p className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>
+        <p className="text-xs mt-1 text-muted-foreground">
           Showing flights to {destination.city}, {destination.country}
         </p>
       </div>

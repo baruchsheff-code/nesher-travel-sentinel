@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import OfflineBanner from "@/components/OfflineBanner";
+import SplashScreen from "@/components/SplashScreen";
+import { useState, useCallback } from "react";
 import Index from "./pages/Index.tsx";
 import SearchResults from "./pages/SearchResults.tsx";
 import FlightDetail from "./pages/FlightDetail.tsx";
@@ -20,36 +22,42 @@ import Admin from "./pages/Admin.tsx";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <NotificationProvider>
-          <OfflineProvider>
-          <OfflineBanner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/search" element={<SearchResults />} />
-            <Route path="/flight" element={<FlightDetail />} />
-            <Route path="/my-trips" element={<MyTrips />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/support" element={<Settings />} />
-            <Route path="/business" element={<Business />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin" element={<Admin />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </OfflineProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [splashDone, setSplashDone] = useState(false);
+  const handleSplashDone = useCallback(() => setSplashDone(true), []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        {!splashDone && <SplashScreen onDone={handleSplashDone} />}
+        <BrowserRouter>
+          <AuthProvider>
+            <NotificationProvider>
+            <OfflineProvider>
+            <OfflineBanner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/search" element={<SearchResults />} />
+              <Route path="/flight" element={<FlightDetail />} />
+              <Route path="/my-trips" element={<MyTrips />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/support" element={<Settings />} />
+              <Route path="/business" element={<Business />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/admin" element={<Admin />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </OfflineProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
