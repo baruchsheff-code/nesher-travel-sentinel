@@ -1,4 +1,5 @@
 import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -164,6 +165,7 @@ const Index = () => {
 
       {/* AI Chat */}
       <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />
+      <BottomNav />
     </div>
   );
 };
