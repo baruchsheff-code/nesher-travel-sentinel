@@ -1,5 +1,6 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo, useEffect, useCallback } from "react";
