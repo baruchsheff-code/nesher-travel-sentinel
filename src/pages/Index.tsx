@@ -8,6 +8,7 @@ import { parseDestination } from "@/lib/destinations";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import TravelChat from "@/components/TravelChat";
+import PriceWatchDashboard from "@/components/PriceWatchDashboard";
 
 const Index = () => {
   const [query, setQuery] = useState("");
@@ -151,6 +152,9 @@ const Index = () => {
             👤 24/7 Human Backup
           </span>
         </div>
+
+        {/* Price Watch Dashboard */}
+        <PriceWatchDashboard />
       </div>
 
       {/* Floating AI Button */}
