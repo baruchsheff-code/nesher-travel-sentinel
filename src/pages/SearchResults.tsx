@@ -324,17 +324,23 @@ const SearchResults = () => {
   };
 
   const recentAirlines = ["UA"];
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: SortMode; label: string }[] = [
     { key: "best", label: "Best Value" },
-    { key: "direct", label: "Most Direct" },
-    { key: "crisis", label: "Crisis-Safe" },
+    { key: "cheapest", label: "Cheapest" },
+    { key: "fastest", label: "Fastest" },
   ];
+
+  // Parse duration string like "10h 30m" to minutes for sorting
+  const parseDuration = (d: string) => {
+    const m = d.match(/(\d+)h\s*(\d+)m/);
+    return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 9999;
+  };
 
   const sortedFlights = useMemo(() => {
     const list = [...flights];
-    if (activeTab === "direct") list.sort((a, b) => a.stops - b.stops || a.priceUsd - b.priceUsd);
-    else if (activeTab === "crisis") list.sort((a, b) => (b.isResilientCarrier ? 1 : 0) - (a.isResilientCarrier ? 1 : 0));
-    else list.sort((a, b) => a.priceUsd - b.priceUsd);
+    if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
+    else if (activeTab === "fastest") list.sort((a, b) => parseDuration(a.durationFormatted) - parseDuration(b.durationFormatted));
+    else list.sort((a, b) => a.priceUsd * (a.stops + 1) - b.priceUsd * (b.stops + 1)); // best value heuristic
     return list;
   }, [flights, activeTab]);
 
