@@ -282,6 +282,7 @@ const SearchResults = () => {
               key={flight.id}
               flight={flight}
               isHiddenBySkiplag={isHiddenBySkiplag}
+              onSelect={() => handleSelectFlight(flight)}
             />
           );
         })}
