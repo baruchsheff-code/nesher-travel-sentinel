@@ -1,8 +1,9 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye } from "lucide-react";
 import { parseDestination, MOCK_SAFETY } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo } from "react";
+import PriceWatchModal from "@/components/PriceWatchModal";
 
 type Tab = "best" | "direct" | "crisis";
 
@@ -45,7 +46,7 @@ const SafetyBadge = ({ score }: { score: number }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
@@ -143,6 +144,15 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect }: { flight: FlightRes
           Freeze Price
         </button>
       </div>
+
+      {/* Watch fare button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onWatch?.(); }}
+        className="w-full rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 mb-3 transition-colors hover:opacity-80"
+        style={{ backgroundColor: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}
+      >
+        <Eye size={13} /> Watch this fare 👁️
+      </button>
 
       {/* Info lines */}
       <div className="flex flex-col gap-1.5">
