@@ -177,6 +177,7 @@ const Index = () => {
 
       {/* AI Chat */}
       <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />
+      <PremiumUpgradeModal open={showPremium} onClose={() => setShowPremium(false)} />
       <BottomNav />
     </div>
   );
