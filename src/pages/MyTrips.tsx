@@ -3,14 +3,17 @@ import { useNavigate } from "react-router-dom";
 import {
   Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar,
   Loader2, RefreshCw, X, QrCode, Headphones, MessageCircle, Shield, ChevronRight,
-  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand
+  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand, Download, WifiOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline } from "@/contexts/OfflineContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
+import OfflineQRCode from "@/components/OfflineQRCode";
+import { saveTripOffline, getTripOffline, buildOfflineTripData, type OfflineTripData } from "@/lib/offlineStore";
 
 interface BookingLeg {
   id: string;
