@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bird, ArrowRightLeft, CalendarDays, Users, ChevronDown, ChevronUp, Minus, Plus, Search } from "lucide-react";
-import { searchDestinations, type Destination } from "@/lib/destinations";
+import { type Destination, DESTINATION_MAP } from "@/lib/destinations";
+import { supabase } from "@/integrations/supabase/client";
 import { format, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, isBefore, isSameDay, startOfDay, isAfter, getDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
