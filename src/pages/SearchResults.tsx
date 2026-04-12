@@ -2,7 +2,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
-import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
+import { type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import PriceWatchModal from "@/components/PriceWatchModal";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
@@ -82,7 +82,7 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; apiSource?: "duffel" | "mock" }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
@@ -100,7 +100,6 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <SafetyBadge score={flight.safetyScore} />
-        {apiSource === "mock" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>}
       </div>
 
       {flight.isSkiplag && (
@@ -137,7 +136,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
           <p className="text-[11px] text-muted-foreground">
             {flight.stops === 0 ? "Nonstop" : flight.stops === 1
               ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
-              : `${flight.stops} stops`}
+              : `${flight.stops} stops${flight.stopAirports?.length ? ` · ${flight.stopAirports.join(" · ")}` : ""}`}
           </p>
         </div>
         <div className="text-center">
@@ -150,8 +149,13 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group relative">
           <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
+          {(flight.baseAmount != null || flight.taxAmount != null) && (
+            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block bg-popover border border-border text-popover-foreground text-xs rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap z-50">
+              Base: {currencySymbol(flight.totalCurrency || "USD")}{(flight.baseAmount ?? 0).toFixed(2)} · Taxes: {currencySymbol(flight.totalCurrency || "USD")}{(flight.taxAmount ?? 0).toFixed(2)}
+            </div>
+          )}
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${predColor}18`, color: predColor }}>
             {flight.prediction === "buy" ? "Buy Now" : "Wait"} · {flight.predictionConfidence}%
           </span>
@@ -227,18 +231,25 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
   // Layover airport for 1-stop flights
   const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
 
-  // Duration from slice
+  // Duration from slice — handles PT12H44M and P1DT6H21M
   const durationIso = slice?.duration || "";
-  const durationMatch = durationIso.match(/PT(\d+)H(?:(\d+)M)?/);
-  const durationFormatted = durationMatch
-    ? `${durationMatch[1]}h ${durationMatch[2] || "0"}m`
-    : "—";
+  const dayMatch = durationIso.match(/P(\d+)D/);
+  const hourMatch = durationIso.match(/(\d+)H/);
+  const minMatch = durationIso.match(/(\d+)M/);
+  const totalHours = (dayMatch ? parseInt(dayMatch[1]) * 24 : 0) + (hourMatch ? parseInt(hourMatch[1]) : 0);
+  const totalMins = minMatch ? parseInt(minMatch[1]) : 0;
+  const durationFormatted = totalHours || totalMins ? `${totalHours}h ${totalMins}m` : "—";
+  const durationMinutes = totalHours * 60 + totalMins;
 
   const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
 
   const flightNum = firstSeg?.marketing_carrier_flight_number
     ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
     : "—";
+
+  // Fare breakdown
+  const baseAmount = offer.base_amount ? parseFloat(offer.base_amount) : null;
+  const taxAmount = offer.tax_amount ? parseFloat(offer.tax_amount) : null;
 
   return {
     id: offer.id || `duffel-${index}`,
@@ -252,10 +263,13 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     arrivalTime: arrTime,
     arrivesNextDay: arrDate !== depDate,
     durationFormatted,
+    durationMinutes,
     stops,
     layoverAirport,
     priceUsd: parseFloat(offer.total_amount) || 0,
     totalCurrency: offer.total_currency || "USD",
+    baseAmount,
+    taxAmount,
     prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
     pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
@@ -278,7 +292,7 @@ const SearchResults = () => {
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
-  const [apiSource, setApiSource] = useState<"duffel" | "mock">("mock");
+  const [apiSource, setApiSource] = useState<"duffel" | "mock">("duffel");
   const [searchError, setSearchError] = useState(false);
 
   // Parse params
@@ -303,8 +317,8 @@ const SearchResults = () => {
   const fetchFlights = useCallback(async () => {
     setSearchError(false);
     if (!destination || !originIata || !dateStr) {
-      setFlights(destination ? getMockFlightsForDestination(destination.iata) : []);
-      setApiSource("mock");
+      setSearchError(true);
+      setFlights([]);
       setLoading(false);
       return;
     }
@@ -325,12 +339,14 @@ const SearchResults = () => {
 
       const offers = data?.offers;
       if (Array.isArray(offers) && offers.length > 0) {
-        setFlights(offers.map((o: any, i: number) => transformDuffelOffer(o, i)));
+        const transformed = offers
+          .map((o: any, i: number) => transformDuffelOffer(o, i))
+          .filter((f: FlightResult) => f.airlineCode !== "ZZ");
+        setFlights(transformed);
         setApiSource("duffel");
       } else {
-        console.warn("No Duffel offers returned, using mock data");
-        setFlights(getMockFlightsForDestination(destination.iata));
-        setApiSource("mock");
+        setSearchError(true);
+        setFlights([]);
       }
     } catch (err) {
       console.error("Duffel API error:", err);
@@ -374,17 +390,18 @@ const SearchResults = () => {
     { key: "fastest", label: "Fastest" },
   ];
 
-  // Parse duration string like "10h 30m" to minutes for sorting
-  const parseDuration = (d: string) => {
-    const m = d.match(/(\d+)h\s*(\d+)m/);
+  // Use durationMinutes for sorting when available, fallback to parsing string
+  const getDurationMins = (f: FlightResult) => {
+    if (f.durationMinutes) return f.durationMinutes;
+    const m = f.durationFormatted.match(/(\d+)h\s*(\d+)m/);
     return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 9999;
   };
 
   const sortedFlights = useMemo(() => {
     const list = [...flights];
     if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
-    else if (activeTab === "fastest") list.sort((a, b) => parseDuration(a.durationFormatted) - parseDuration(b.durationFormatted));
-    else list.sort((a, b) => a.priceUsd * (a.stops + 1) - b.priceUsd * (b.stops + 1)); // best value heuristic
+    else if (activeTab === "fastest") list.sort((a, b) => getDurationMins(a) - getDurationMins(b));
+    else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
   }, [flights, activeTab]);
 
@@ -466,9 +483,8 @@ const SearchResults = () => {
         )}
 
         <p className="text-sm font-semibold mt-2 text-foreground">
-          {sortedFlights.length} flights found · {destination.city}{destination.country ? `, ${destination.country}` : ""}{formattedDate ? ` · ${formattedDate}` : ""}
-          {apiSource === "mock" && <span className="text-xs text-muted-foreground ml-2">(Demo data)</span>}
-          {apiSource === "duffel" && <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>}
+          {sortedFlights.length} flights found · {findDestByIata(originIata)?.city || originIata} → {destination.city}{destination.country ? `, ${destination.country}` : ""}{formattedDate ? ` · ${formattedDate}` : ""}
+          <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>
         </p>
       </div>
 
@@ -499,7 +515,6 @@ const SearchResults = () => {
               key={flight.id}
               flight={flight}
               isHiddenBySkiplag={isHiddenBySkiplag}
-              apiSource={apiSource}
               onSelect={() => handleSelectFlight(flight)}
               onWatch={() => setWatchFlight(flight)}
             />

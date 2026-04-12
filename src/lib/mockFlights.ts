@@ -10,9 +10,12 @@ export interface FlightResult {
   arrivalTime: string;
   arrivesNextDay: boolean;
   durationFormatted: string;
+  durationMinutes?: number;
   stops: number;
   priceUsd: number;
   totalCurrency?: string;
+  baseAmount?: number | null;
+  taxAmount?: number | null;
   prediction: "buy" | "wait";
   predictionConfidence: number;
   pointsEarn: number;
