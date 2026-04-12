@@ -5,10 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { parseDestination } from "@/lib/destinations";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import TravelChat from "@/components/TravelChat";
 
 const Index = () => {
   const [query, setQuery] = useState("");
   const [isParsing, setIsParsing] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
@@ -147,12 +149,16 @@ const Index = () => {
 
       {/* Floating AI Button */}
       <button
+        onClick={() => setChatOpen(true)}
         className="fixed bottom-6 right-6 bg-primary rounded-full flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity duration-200"
         style={{ width: 56, height: 56 }}
         aria-label="AI Assistant"
       >
         <MessageCircle className="text-accent-foreground" size={26} />
       </button>
+
+      {/* AI Chat */}
+      <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 };
