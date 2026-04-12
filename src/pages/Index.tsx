@@ -1,7 +1,7 @@
 import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { parseDestination } from "@/lib/destinations";
@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import TravelChat from "@/components/TravelChat";
 import PriceWatchDashboard from "@/components/PriceWatchDashboard";
+import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
+import TierBadge from "@/components/TierBadge";
 
 const Index = () => {
   const [query, setQuery] = useState("");
