@@ -301,8 +301,8 @@ const SearchResults = () => {
 
   // Fetch flights from Duffel API via edge function
   const fetchFlights = useCallback(async () => {
+    setSearchError(false);
     if (!destination || !originIata || !dateStr) {
-      // Fall back to mock if missing params
       setFlights(destination ? getMockFlightsForDestination(destination.iata) : []);
       setApiSource("mock");
       setLoading(false);
@@ -321,22 +321,21 @@ const SearchResults = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
       if (Array.isArray(offers) && offers.length > 0) {
         setFlights(offers.map((o: any, i: number) => transformDuffelOffer(o, i)));
         setApiSource("duffel");
       } else {
-        // No offers returned — fall back to mock
         console.warn("No Duffel offers returned, using mock data");
         setFlights(getMockFlightsForDestination(destination.iata));
         setApiSource("mock");
       }
     } catch (err) {
-      console.error("Duffel API error, falling back to mock:", err);
-      toast.error("Having trouble loading live fares. Showing sample results.");
-      setFlights(getMockFlightsForDestination(destination.iata));
-      setApiSource("mock");
+      console.error("Duffel API error:", err);
+      setSearchError(true);
+      setFlights([]);
     } finally {
       setLoading(false);
     }
