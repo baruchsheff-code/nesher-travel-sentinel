@@ -5,6 +5,7 @@ import {
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
+import SeatSelector from "@/components/SeatSelector";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,6 +47,16 @@ const FlightDetail = () => {
   const [addPriceFreeze, setAddPriceFreeze] = useState(false);
   const [addAutoCheckin, setAddAutoCheckin] = useState(false);
   const [addAutoRecovery, setAddAutoRecovery] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
+
+  // Seat price lookup
+  const seatPrice = useMemo(() => {
+    if (!selectedSeat) return 0;
+    const row = parseInt(selectedSeat);
+    if (row <= 4) return 25; // premium
+    if (row === 12 || row === 13) return 35; // exit
+    return 0;
+  }, [selectedSeat]);
 
   // Mock states
   const hasPassport = false;
@@ -84,7 +95,8 @@ const FlightDetail = () => {
     (addInsurance ? insuranceCost : 0) +
     (addEsim ? esimCost : 0) +
     (addLounge ? loungeCost : 0) +
-    (addPriceFreeze ? freezeCost : 0);
+    (addPriceFreeze ? freezeCost : 0) +
+    seatPrice;
 
   const grandTotal = flight.priceUsd + aiFee + extrasTotal;
 
@@ -132,7 +144,7 @@ const FlightDetail = () => {
           arrival_time: new Date(departureDate.getTime() + durationMs).toISOString(),
           flight_status: "scheduled",
           leg_number: 1,
-          seat_number: `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
+          seat_number: selectedSeat || `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
           pnr: `NSH${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
           gate: `${["A", "B", "C", "D"][Math.floor(Math.random() * 4)]}${Math.floor(Math.random() * 30) + 1}`,
           terminal: String(Math.floor(Math.random() * 4) + 1),
@@ -406,6 +418,13 @@ const FlightDetail = () => {
               />
             </div>
           </div>
+
+          {/* 4. SEAT SELECTION */}
+          <SeatSelector
+            selectedSeat={selectedSeat}
+            onSelect={setSelectedSeat}
+            cabinClass={flight.cabinClass}
+          />
         </div>
 
         {/* 4. BOOK BUTTON - Fixed bottom */}
