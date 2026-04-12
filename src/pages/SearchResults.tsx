@@ -229,7 +229,7 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("best");
+  const [activeTab, setActiveTab] = useState<SortMode>("best");
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
