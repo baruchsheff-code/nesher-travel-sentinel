@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Bird, User, Bell, Plane, Shield, CreditCard, LogOut,
-  ChevronRight, Save, Loader2
+  ChevronRight, Save, Loader2, Crown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -297,6 +297,43 @@ const Settings = () => {
           <SettingRow label="eSIM Offers" desc="Suggest travel eSIM for international flights">
             <Toggle checked={esimOffer} onChange={setEsimOffer} />
           </SettingRow>
+        </div>
+
+        {/* Subscription */}
+        <SectionHeader icon={Crown} title="Subscription" />
+        <div className="bg-card rounded-2xl border border-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">
+                  {tier === "free" ? "Free Plan" : tier === "premium" ? "Premium" : "Business"}
+                </p>
+                <TierBadge tier={tier} />
+              </div>
+              {subscriptionEnd && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Renews {new Date(subscriptionEnd).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            {subscribed ? (
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-primary text-primary-foreground disabled:opacity-50"
+              >
+                {portalLoading ? <Loader2 size={12} className="animate-spin" /> : "Manage"}
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate("/business")}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl"
+                style={{ border: "1px solid hsl(var(--primary))", color: "hsl(var(--primary))" }}
+              >
+                Upgrade
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Account */}
