@@ -5,6 +5,8 @@ import {
   Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
+import PaymentScreen from "@/components/PaymentScreen";
+import BookingConfirmation from "@/components/BookingConfirmation";
 import SeatSelector from "@/components/SeatSelector";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { supabase } from "@/integrations/supabase/client";
