@@ -39,7 +39,10 @@ const FlightDetail = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [showPassengerForm, setShowPassengerForm] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [passengerData, setPassengerData] = useState<PassengerData | null>(null);
+  const [bookingPnr, setBookingPnr] = useState("");
+  const [bookingPnr2, setBookingPnr2] = useState<string | undefined>();
 
   // Add-on toggles
   const [addConnectionGuarantee, setAddConnectionGuarantee] = useState(false);
