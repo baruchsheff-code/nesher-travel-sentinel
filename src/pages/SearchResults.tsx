@@ -165,6 +165,12 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
         <Eye size={13} /> Watch this fare 👁️
       </button>
 
+      {flight.expiresAt && (
+        <div className="mb-2">
+          <FareExpiry expiresAt={flight.expiresAt} />
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <CreditCard size={13} className="text-muted-foreground" />
