@@ -144,7 +144,7 @@ const FlightDetail = () => {
           arrival_time: new Date(departureDate.getTime() + durationMs).toISOString(),
           flight_status: "scheduled",
           leg_number: 1,
-          seat_number: `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
+          seat_number: selectedSeat || `${Math.floor(Math.random() * 30) + 1}${["A", "B", "C", "D", "E", "F"][Math.floor(Math.random() * 6)]}`,
           pnr: `NSH${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
           gate: `${["A", "B", "C", "D"][Math.floor(Math.random() * 4)]}${Math.floor(Math.random() * 30) + 1}`,
           terminal: String(Math.floor(Math.random() * 4) + 1),
