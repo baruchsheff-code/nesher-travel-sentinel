@@ -195,7 +195,7 @@ const cabinLabels: Record<CabinClass, string> = {
 };
 
 export default function FlightSearchBar({ onSearch, initialParams, compact }: Props) {
-  const [tripType, setTripType] = useState<TripType>(initialParams?.tripType || "one-way");
+  const [tripType, setTripType] = useState<TripType>(initialParams?.tripType || "round-trip");
   const [origin, setOrigin] = useState<Destination | null>(initialParams?.origin || null);
   const [destination, setDestination] = useState<Destination | null>(initialParams?.destination || null);
   const [departDate, setDepartDate] = useState<Date | null>(initialParams?.departDate || null);
