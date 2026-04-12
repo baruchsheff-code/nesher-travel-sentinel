@@ -70,3 +70,42 @@
   animation: fade-in 0.6s ease-out 0.3s forwards;
   opacity: 0;
 }
+
+@keyframes gemini-border-rotate {
+  0% { --gemini-angle: 0deg; }
+  100% { --gemini-angle: 360deg; }
+}
+
+@keyframes gemini-pulse {
+  0%, 100% { opacity: 0.5; filter: blur(6px); }
+  50% { opacity: 0.8; filter: blur(10px); }
+}
+
+@property --gemini-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.gemini-glow {
+  position: relative;
+  background: conic-gradient(
+    from var(--gemini-angle),
+    #4285f4, #ea4335, #fbbc04, #34a853, #4285f4
+  );
+  animation: gemini-border-rotate 3s linear infinite;
+  border-radius: 1rem;
+}
+
+.gemini-glow::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 1.125rem;
+  background: conic-gradient(
+    from var(--gemini-angle),
+    #4285f4, #ea4335, #fbbc04, #34a853, #4285f4
+  );
+  animation: gemini-pulse 2s ease-in-out infinite;
+  z-index: 0;
+}
