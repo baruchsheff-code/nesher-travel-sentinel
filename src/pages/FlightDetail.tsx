@@ -342,7 +342,7 @@ const FlightDetail = () => {
         {/* 4. BOOK BUTTON - Fixed bottom */}
         <div className="fixed bottom-0 left-0 right-0 px-4 py-4 z-30 bg-background border-t border-border">
           <button
-            onClick={handleBook}
+            onClick={handleBookClick}
             disabled={isBooking}
             className="w-full py-3.5 rounded-2xl text-sm font-semibold flex flex-col items-center justify-center gap-0.5 disabled:opacity-60"
             style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
