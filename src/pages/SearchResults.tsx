@@ -2,11 +2,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil } from "lucide-react";
 import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import PriceWatchModal from "@/components/PriceWatchModal";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Tab = "best" | "direct" | "crisis";
 
