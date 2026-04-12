@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { ArrowLeft, Loader2, User, Mail, FileText, Calendar, Globe } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Loader2, User, Mail, FileText, Calendar, Globe, Camera, ScanLine } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface PassengerData {
   firstName: string;
@@ -27,6 +29,8 @@ const PassengerForm = ({ grandTotal, onSubmit, onBack, isSubmitting }: Passenger
     nationality: "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof PassengerData, string>>>({});
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validate = (): boolean => {
     const newErrors: typeof errors = {};
@@ -70,6 +74,60 @@ const PassengerForm = ({ grandTotal, onSubmit, onBack, isSubmitting }: Passenger
   const update = (field: keyof PassengerData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const handleScanPassport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10MB");
+      return;
+    }
+
+    setIsScanning(true);
+    try {
+      // Convert to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("passport-ocr", {
+        body: { image: base64 },
+      });
+
+      if (error) throw error;
+      if (!data?.success || !data?.data) {
+        throw new Error(data?.error || "Could not read passport");
+      }
+
+      const extracted = data.data;
+      setForm((prev) => ({
+        ...prev,
+        firstName: extracted.first_name || prev.firstName,
+        lastName: extracted.last_name || prev.lastName,
+        passportNumber: extracted.passport_number || prev.passportNumber,
+        passportExpiry: extracted.expiry_date || prev.passportExpiry,
+        nationality: extracted.nationality || prev.nationality,
+      }));
+      setErrors({});
+      toast.success("Passport details extracted!");
+    } catch (err) {
+      console.error("Passport scan error:", err);
+      toast.error("Could not read passport. Please fill in manually.");
+    } finally {
+      setIsScanning(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -124,10 +182,39 @@ const PassengerForm = ({ grandTotal, onSubmit, onBack, isSubmitting }: Passenger
 
         {/* Passport Info */}
         <div className="rounded-2xl p-4 space-y-4" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileText size={16} className="text-primary" />
-            Passport Information
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileText size={16} className="text-primary" />
+              Passport Information
+            </p>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isScanning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors disabled:opacity-50"
+              style={{ backgroundColor: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}
+            >
+              {isScanning ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <ScanLine size={14} />
+                  Scan Passport
+                </>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanPassport}
+              className="hidden"
+            />
+          </div>
           <FormField
             label="Passport Number"
             value={form.passportNumber}
