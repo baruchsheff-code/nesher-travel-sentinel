@@ -47,6 +47,7 @@ const FlightDetail = () => {
   const [addPriceFreeze, setAddPriceFreeze] = useState(false);
   const [addAutoCheckin, setAddAutoCheckin] = useState(false);
   const [addAutoRecovery, setAddAutoRecovery] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
 
   // Mock states
   const hasPassport = false;
