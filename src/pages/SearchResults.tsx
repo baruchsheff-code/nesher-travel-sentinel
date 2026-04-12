@@ -1,9 +1,12 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird } from "lucide-react";
-import { parseDestination, MOCK_SAFETY } from "@/lib/destinations";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil } from "lucide-react";
+import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PriceWatchModal from "@/components/PriceWatchModal";
+import SearchLoadingScreen from "@/components/SearchLoadingScreen";
+import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
+import { format } from "date-fns";
 
 type Tab = "best" | "direct" | "crisis";
 
@@ -17,7 +20,7 @@ const SafetyBanner = ({ iata, city }: { iata: string; city: string }) => {
         <AlertTriangle className="shrink-0 mt-0.5" size={18} style={{ color: "#FBBF24" }} />
         <div>
           <p className="text-sm font-semibold" style={{ color: "#FBBF24" }}>Safety Advisory — {city}</p>
-          <p className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>{info.eventSummary}</p>
+          <p className="text-xs mt-1 text-muted-foreground">{info.eventSummary}</p>
           <button className="text-xs font-medium mt-2 underline" style={{ color: "#FBBF24" }}>View Crisis-Safe routes →</button>
         </div>
       </div>
@@ -29,7 +32,7 @@ const SafetyBanner = ({ iata, city }: { iata: string; city: string }) => {
       <AlertTriangle className="shrink-0 mt-0.5" size={18} style={{ color: "#EF4444" }} />
       <div>
         <p className="text-sm font-semibold" style={{ color: "#EF4444" }}>Critical Warning — {city}</p>
-        <p className="text-xs mt-1" style={{ color: "hsl(var(--muted-foreground))" }}>We strongly recommend Crisis-Safe routing for this destination.</p>
+        <p className="text-xs mt-1 text-muted-foreground">We strongly recommend Crisis-Safe routing for this destination.</p>
         <button className="text-xs font-semibold mt-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#EF4444", color: "#fff" }}>View Crisis-Safe routes</button>
       </div>
     </div>
@@ -51,15 +54,9 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
 
   if (isHiddenBySkiplag && !expanded) {
     return (
-      <button
-        onClick={() => setExpanded(true)}
-        className="w-full rounded-2xl px-4 py-3 flex items-center justify-between mb-3"
-        style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-      >
-        <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-          1 hidden-city fare hidden — protecting your {flight.airlineName} account 🛡️
-        </span>
-        <ChevronDown size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
+      <button onClick={() => setExpanded(true)} className="w-full rounded-2xl px-4 py-3 flex items-center justify-between mb-3 bg-card border border-border">
+        <span className="text-xs text-muted-foreground">1 hidden-city fare hidden — protecting your {flight.airlineName} account 🛡️</span>
+        <ChevronDown size={14} className="text-muted-foreground" />
       </button>
     );
   }
@@ -67,102 +64,78 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
 
   return (
-    <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-      {/* DEMO badge */}
+    <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <SafetyBadge score={flight.safetyScore} />
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>DEMO</span>
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>
       </div>
 
-      {/* Skiplag badge */}
       {flight.isSkiplag && (
         <div className="mb-2">
-          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>
-            Hidden City Fare ⚡
-          </span>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>Hidden City Fare ⚡</span>
         </div>
       )}
-
-      {/* Split ticket badge */}
       {flight.isSplitTicket && (
         <div className="mb-2">
-          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>
-            Split Ticket · {flight.splitDetails}
-          </span>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Split Ticket · {flight.splitDetails}</span>
         </div>
       )}
 
-      {/* Airline row */}
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="rounded-full flex items-center justify-center text-xs font-bold" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--muted))", color: "hsl(var(--foreground))" }}>
-          {flight.airlineCode}
-        </div>
+        <div className="rounded-full flex items-center justify-center text-xs font-bold w-9 h-9 bg-muted text-foreground">{flight.airlineCode}</div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>{flight.airlineName}</p>
-          <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{flight.flightNumber} · {flight.cabinClass}</p>
+          <p className="text-sm font-semibold text-foreground">{flight.airlineName}</p>
+          <p className="text-xs text-muted-foreground">{flight.flightNumber} · {flight.cabinClass}</p>
         </div>
       </div>
 
-      {/* Time row */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-center">
-          <p className="text-xl font-bold" style={{ color: "hsl(var(--foreground))" }}>{flight.departureTime}</p>
-          <p className="text-xs font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>{flight.originIata}</p>
+          <p className="text-xl font-bold text-foreground">{flight.departureTime}</p>
+          <p className="text-xs font-medium text-muted-foreground">{flight.originIata}</p>
         </div>
-
         <div className="flex-1 flex flex-col items-center px-3">
-          <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))" }}>{flight.durationFormatted}</p>
+          <p className="text-[11px] text-muted-foreground">{flight.durationFormatted}</p>
           <div className="flex items-center gap-1 w-full my-1">
-            <div className="flex-1 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
-            <Plane size={14} style={{ color: "hsl(var(--muted-foreground))" }} />
-            <div className="flex-1 h-px" style={{ backgroundColor: "hsl(var(--border))" }} />
+            <div className="flex-1 h-px bg-border" />
+            <Plane size={14} className="text-muted-foreground" />
+            <div className="flex-1 h-px bg-border" />
           </div>
-          <p className="text-[11px]" style={{ color: "hsl(var(--muted-foreground))" }}>
-            {flight.stops === 0 ? "Nonstop" : `${flight.stops} stop`}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{flight.stops === 0 ? "Nonstop" : `${flight.stops} stop`}</p>
         </div>
-
         <div className="text-center">
-          <p className="text-xl font-bold" style={{ color: "hsl(var(--foreground))" }}>
+          <p className="text-xl font-bold text-foreground">
             {flight.arrivalTime}
-            {flight.arrivesNextDay && <sup className="text-[10px] ml-0.5" style={{ color: "hsl(var(--muted-foreground))" }}>+1</sup>}
+            {flight.arrivesNextDay && <sup className="text-[10px] ml-0.5 text-muted-foreground">+1</sup>}
           </p>
-          <p className="text-xs font-medium" style={{ color: "hsl(var(--muted-foreground))" }}>{flight.destinationIata}</p>
+          <p className="text-xs font-medium text-muted-foreground">{flight.destinationIata}</p>
         </div>
       </div>
 
-      {/* Price row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold" style={{ color: "hsl(var(--primary))" }}>${flight.priceUsd.toLocaleString()}</span>
+          <span className="text-2xl font-bold text-primary">${flight.priceUsd.toLocaleString()}</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${predColor}18`, color: predColor }}>
             {flight.prediction === "buy" ? "Buy Now" : "Wait"} · {flight.predictionConfidence}%
           </span>
         </div>
-        <button className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ border: "1px solid hsl(var(--primary))", color: "hsl(var(--primary))" }}>
-          <Lock size={12} className="inline mr-1" style={{ verticalAlign: "-1px" }} />
-          Freeze Price
+        <button className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-primary text-primary">
+          <Lock size={12} className="inline mr-1" style={{ verticalAlign: "-1px" }} />Freeze Price
         </button>
       </div>
 
-      {/* Watch fare button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onWatch?.(); }}
-        className="w-full rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 mb-3 transition-colors hover:opacity-80"
-        style={{ backgroundColor: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}
-      >
+      <button onClick={(e) => { e.stopPropagation(); onWatch?.(); }} className="w-full rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 mb-3 transition-colors hover:opacity-80 bg-muted text-muted-foreground">
         <Eye size={13} /> Watch this fare 👁️
       </button>
 
-      {/* Info lines */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <CreditCard size={13} style={{ color: "hsl(var(--muted-foreground))" }} />
-          <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
+          <CreditCard size={13} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Globe size={13} style={{ color: "hsl(var(--muted-foreground))" }} />
-          <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{flight.visaInfo}</span>
+          <Globe size={13} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{flight.visaInfo}</span>
         </div>
         {flight.isResilientCarrier && (
           <div className="flex items-center gap-2">
@@ -172,43 +145,84 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
         )}
       </div>
 
-      {/* Skiplag warning if expanded */}
       {isHiddenBySkiplag && expanded && (
         <div className="mt-3 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
-          <p className="text-xs" style={{ color: "#FBBF24" }}>
-            ⚠️ Hidden-city ticketing on {flight.airlineName} may risk your frequent flyer account. You've flown with them recently.
-          </p>
+          <p className="text-xs" style={{ color: "#FBBF24" }}>⚠️ Hidden-city ticketing on {flight.airlineName} may risk your frequent flyer account.</p>
         </div>
       )}
     </div>
   );
 };
 
+// Find destination from IATA
+function findDestByIata(iata: string): Destination | null {
+  for (const d of Object.values(DESTINATION_MAP)) {
+    if (d.iata === iata) return d;
+  }
+  return null;
+}
+
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const query = searchParams.get("q") || "";
-  const originParam = searchParams.get("origin");
-  const dateParam = searchParams.get("date");
-  const cardParam = searchParams.get("card");
   const [activeTab, setActiveTab] = useState<Tab>("best");
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editSearch, setEditSearch] = useState(false);
 
-  const destination = useMemo(() => parseDestination(query), [query]);
+  // Parse params
+  const destIata = searchParams.get("dest") || "";
+  const destCity = searchParams.get("destCity") || "";
+  const destCountry = searchParams.get("destCountry") || "";
+  const destFlag = searchParams.get("destFlag") || "";
+  const originIata = searchParams.get("origin") || "";
+  const dateStr = searchParams.get("date") || "";
+  const cabinClass = searchParams.get("cabin") || "economy";
+  const adultsParam = Number(searchParams.get("adults") || "1");
+  const tripType = searchParams.get("tripType") || "one-way";
+
+  // Legacy support: if no dest param but has q param
+  const legacyQuery = searchParams.get("q") || "";
+  const destination = useMemo(() => {
+    if (destIata) return findDestByIata(destIata) || { iata: destIata, city: destCity, country: destCountry, flag: destFlag, airport: "" };
+    return parseDestination(legacyQuery);
+  }, [destIata, destCity, destCountry, destFlag, legacyQuery]);
+
   const flights = useMemo(
     () => (destination ? getMockFlightsForDestination(destination.iata) : []),
     [destination]
   );
 
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleSelectFlight = (flight: FlightResult) => {
-    if (destination) {
-      navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
-    }
+    if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
   };
 
-  // Mock: user flew United in the last 6 months
-  const recentAirlines = ["UA"];
+  const handleEditSearch = (params: FlightSearchParams) => {
+    if (!params.origin || !params.destination || !params.departDate) return;
+    const sp = new URLSearchParams();
+    sp.set("origin", params.origin.iata);
+    sp.set("dest", params.destination.iata);
+    sp.set("destCity", params.destination.city);
+    sp.set("destCountry", params.destination.country);
+    sp.set("destFlag", params.destination.flag);
+    sp.set("date", params.departDate.toISOString().slice(0, 10));
+    if (params.returnDate) sp.set("returnDate", params.returnDate.toISOString().slice(0, 10));
+    sp.set("cabin", params.cabinClass);
+    sp.set("adults", String(params.adults));
+    sp.set("tripType", params.tripType);
+    navigate(`/search?${sp.toString()}`);
+    setEditSearch(false);
+    setLoading(true);
+    setTimeout(() => setLoading(false), 2500);
+  };
 
+  const recentAirlines = ["UA"];
   const tabs: { key: Tab; label: string }[] = [
     { key: "best", label: "Best Value" },
     { key: "direct", label: "Most Direct" },
@@ -217,58 +231,79 @@ const SearchResults = () => {
 
   const sortedFlights = useMemo(() => {
     const list = [...flights];
-    if (activeTab === "direct") {
-      list.sort((a, b) => a.stops - b.stops || a.priceUsd - b.priceUsd);
-    } else if (activeTab === "crisis") {
-      list.sort((a, b) => (b.isResilientCarrier ? 1 : 0) - (a.isResilientCarrier ? 1 : 0));
-    } else {
-      list.sort((a, b) => a.priceUsd - b.priceUsd);
-    }
+    if (activeTab === "direct") list.sort((a, b) => a.stops - b.stops || a.priceUsd - b.priceUsd);
+    else if (activeTab === "crisis") list.sort((a, b) => (b.isResilientCarrier ? 1 : 0) - (a.isResilientCarrier ? 1 : 0));
+    else list.sort((a, b) => a.priceUsd - b.priceUsd);
     return list;
   }, [flights, activeTab]);
+
+  if (loading) return <SearchLoadingScreen />;
 
   if (!destination) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-lg font-semibold" style={{ color: "hsl(var(--foreground))" }}>Destination not found</p>
-          <p className="text-sm mt-2" style={{ color: "hsl(var(--muted-foreground))" }}>Try searching for a city like "Tel Aviv" or "Istanbul"</p>
-          <button onClick={() => navigate("/")} className="mt-4 text-sm font-medium underline" style={{ color: "hsl(var(--primary))" }}>Back to search</button>
+          <p className="text-lg font-semibold text-foreground">Destination not found</p>
+          <p className="text-sm mt-2 text-muted-foreground">Try searching for a city like "Tel Aviv" or "Istanbul"</p>
+          <button onClick={() => navigate("/")} className="mt-4 text-sm font-medium underline text-primary">Back to search</button>
         </div>
       </div>
     );
   }
 
+  const formattedDate = dateStr ? format(new Date(dateStr + "T12:00:00"), "MMM d") : "";
+  const cabinLabels: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
+
   return (
     <div className="min-h-screen bg-background pb-8 animate-fade-in">
-      {/* Top Bar */}
-      <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background">
+      {/* Condensed search header */}
+      <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background border-b border-border">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="shrink-0">
             <ArrowLeft size={22} className="text-foreground" />
           </button>
           <Bird className="text-primary shrink-0" size={20} strokeWidth={2.5} />
           <span className="text-primary font-bold text-sm">Nesher</span>
-          <button
-            onClick={() => navigate("/")}
-            className="flex-1 rounded-full px-3 py-2 text-sm text-left truncate min-w-0 bg-card text-foreground border border-border"
-          >
-            {query}
-          </button>
         </div>
-        <p className="text-sm font-semibold mt-3 text-foreground">
-          {sortedFlights.length} flights to {destination.city}, {destination.country}
-        </p>
-        <p className="text-xs mt-1 text-muted-foreground">
-          Showing flights to {destination.city}, {destination.country}
+
+        {editSearch ? (
+          <div className="mt-3">
+            <FlightSearchBar
+              compact
+              onSearch={handleEditSearch}
+              initialParams={{
+                origin: findDestByIata(originIata),
+                destination: destination as any,
+                departDate: dateStr ? new Date(dateStr + "T12:00:00") : null,
+                cabinClass: cabinClass as any,
+                adults: adultsParam,
+                tripType: tripType as any,
+              }}
+            />
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-foreground font-medium truncate min-w-0">
+              <span>{destination.flag || "✈️"}</span>
+              <span className="truncate">{destination.city}</span>
+              {formattedDate && <span className="text-muted-foreground">· {formattedDate}</span>}
+              <span className="text-muted-foreground">· {adultsParam} {adultsParam === 1 ? "Adult" : "Adults"}</span>
+              <span className="text-muted-foreground">· {cabinLabels[cabinClass] || "Economy"}</span>
+            </div>
+            <button onClick={() => setEditSearch(true)} className="shrink-0 flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+              <Pencil size={12} /> Edit
+            </button>
+          </div>
+        )}
+
+        <p className="text-sm font-semibold mt-2 text-foreground">
+          {sortedFlights.length} flights found · Sorted by best value
         </p>
       </div>
 
-      {/* Safety Banner */}
       <SafetyBanner iata={destination.iata} city={destination.city} />
 
-      {/* Tabs */}
-      <div className="flex gap-2 px-4 mb-4">
+      <div className="flex gap-2 px-4 mb-4 mt-4">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -285,7 +320,6 @@ const SearchResults = () => {
         ))}
       </div>
 
-      {/* Flight Cards */}
       <div className="px-4">
         {sortedFlights.map((flight) => {
           const isHiddenBySkiplag = flight.isSkiplag && recentAirlines.includes(flight.airlineCode);
