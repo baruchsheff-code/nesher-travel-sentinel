@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { ArrowLeft, Loader2, User, Mail, FileText, Calendar, Globe } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Loader2, User, Mail, FileText, Calendar, Globe, Camera, ScanLine } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface PassengerData {
   firstName: string;
