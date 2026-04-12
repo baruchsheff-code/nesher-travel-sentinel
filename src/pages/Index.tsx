@@ -1,4 +1,4 @@
-import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
+import { Search, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
 import { useState, useRef } from "react";
@@ -80,7 +80,7 @@ const Index = () => {
             Nesher
           </span>
         </div>
-        {user ? (
+        {user && (
           <div className="flex items-center gap-1">
             <NotificationBell />
             <button onClick={() => navigate("/my-trips")} className="p-2 rounded-full hover:bg-card transition-colors" aria-label="My Trips">
@@ -93,13 +93,6 @@ const Index = () => {
               <LogOut size={16} className="text-muted-foreground" />
             </button>
           </div>
-        ) : (
-          <button
-            onClick={() => navigate("/auth")}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground"
-          >
-            Sign In
-          </button>
         )}
       </div>
 
@@ -165,15 +158,6 @@ const Index = () => {
         <PriceWatchDashboard />
       </div>
 
-      {/* Floating AI Button */}
-      <button
-        onClick={() => setChatOpen(true)}
-        className="fixed bottom-6 right-6 bg-primary rounded-full flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity duration-200"
-        style={{ width: 56, height: 56 }}
-        aria-label="AI Assistant"
-      >
-        <MessageCircle className="text-accent-foreground" size={26} />
-      </button>
 
       {/* AI Chat */}
       <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />
