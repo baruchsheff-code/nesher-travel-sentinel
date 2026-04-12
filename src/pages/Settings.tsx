@@ -7,10 +7,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import TierBadge from "@/components/TierBadge";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, signOut, loading: authLoading, tier } = useAuth();
   const [saving, setSaving] = useState(false);
 
   // Profile
@@ -231,7 +232,10 @@ const Settings = () => {
               </select>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{user?.email}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <TierBadge tier={tier} />
+          </div>
         </div>
 
         {/* Notifications */}

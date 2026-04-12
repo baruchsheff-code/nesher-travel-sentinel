@@ -1,7 +1,7 @@
 import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import NotificationBell from "@/components/NotificationBell";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { parseDestination } from "@/lib/destinations";
@@ -9,23 +9,31 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import TravelChat from "@/components/TravelChat";
 import PriceWatchDashboard from "@/components/PriceWatchDashboard";
+import PremiumUpgradeModal from "@/components/PremiumUpgradeModal";
+import TierBadge from "@/components/TierBadge";
 
 const Index = () => {
   const [query, setQuery] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const searchCountRef = useRef(0);
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, tier } = useAuth();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    searchCountRef.current += 1;
+    const shouldShowUpgrade = searchCountRef.current >= 2 && tier === "free" && user;
+
     const directMatch = parseDestination(trimmed);
     const isSimple = trimmed.split(/\s+/).length <= 2 && directMatch;
 
     if (isSimple) {
+      if (shouldShowUpgrade) setTimeout(() => setShowPremium(true), 500);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
       return;
     }
@@ -169,6 +177,7 @@ const Index = () => {
 
       {/* AI Chat */}
       <TravelChat open={chatOpen} onClose={() => setChatOpen(false)} />
+      <PremiumUpgradeModal open={showPremium} onClose={() => setShowPremium(false)} />
       <BottomNav />
     </div>
   );
