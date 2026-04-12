@@ -3,14 +3,17 @@ import { useNavigate } from "react-router-dom";
 import {
   Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar,
   Loader2, RefreshCw, X, QrCode, Headphones, MessageCircle, Shield, ChevronRight,
-  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand
+  Copy, Check, CloudSun, Thermometer, ArrowRight, Hand, Download, WifiOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline } from "@/contexts/OfflineContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import BottomNav from "@/components/BottomNav";
+import OfflineQRCode from "@/components/OfflineQRCode";
+import { saveTripOffline, getTripOffline, buildOfflineTripData, type OfflineTripData } from "@/lib/offlineStore";
 
 interface BookingLeg {
   id: string;
@@ -165,10 +168,48 @@ const TripCard = ({ booking, onDetail }: { booking: Booking; onDetail: () => voi
   const countdown = getCountdown(firstLeg?.departure_time);
   const disrupted = isDisrupted(status);
   const upcoming = isUpcoming(booking);
+  const { isOffline } = useOffline();
 
   const [showChangeGate, setShowChangeGate] = useState(false);
   const [findingAlts, setFindingAlts] = useState(false);
   const [showAlts, setShowAlts] = useState(false);
+  const [offlineData, setOfflineData] = useState<OfflineTripData | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Load offline data on mount
+  useEffect(() => {
+    getTripOffline(booking.id).then((d) => setOfflineData(d));
+  }, [booking.id]);
+
+  // Auto-sync upcoming trips
+  useEffect(() => {
+    if (upcoming && !offlineData && !isOffline) {
+      handleSync();
+    }
+  }, [upcoming, isOffline]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const data = buildOfflineTripData(booking);
+      await saveTripOffline(data);
+      setOfflineData(data);
+      toast.success("Trip saved offline");
+    } catch (err) {
+      console.error("Sync error:", err);
+      toast.error("Failed to save offline");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncAgo = offlineData ? (() => {
+    const diff = Date.now() - new Date(offlineData.lastSynced).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins} min ago`;
+    return `${Math.floor(mins / 60)}h ago`;
+  })() : null;
 
   // Auto-expand disrupted cards
   useEffect(() => {
@@ -231,6 +272,31 @@ const TripCard = ({ booking, onDetail }: { booking: Booking; onDetail: () => voi
           </span>
           {firstLeg?.gate && <span>Gate {firstLeg.gate}</span>}
           {firstLeg?.seat_number && <span>Seat {firstLeg.seat_number}</span>}
+        </div>
+      )}
+
+      {/* Offline sync status */}
+      {upcoming && (
+        <div className="flex items-center justify-between text-[11px]">
+          {offlineData ? (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Download size={10} className="text-primary" />
+              📥 Trip saved offline · Last synced {syncAgo}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              {isOffline ? <WifiOff size={10} /> : <Download size={10} />}
+              {isOffline ? "No offline data" : "Not synced yet"}
+            </span>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSync(); }}
+            disabled={syncing || isOffline}
+            className="flex items-center gap-1 text-primary font-medium disabled:opacity-50"
+          >
+            <RefreshCw size={10} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync now"}
+          </button>
         </div>
       )}
 
