@@ -121,7 +121,20 @@ const Settings = () => {
     navigate("/");
   };
 
-  if (!authLoading && !user) {
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to open portal");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+
     return (
       <div className="min-h-screen bg-background px-4 flex flex-col items-center justify-center gap-4">
         <User size={48} className="text-muted-foreground opacity-30" />
