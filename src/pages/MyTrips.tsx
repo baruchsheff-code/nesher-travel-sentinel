@@ -1,10 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar, Loader2, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar,
+  Loader2, RefreshCw, X, QrCode, Headphones, MessageCircle, Shield, ChevronRight,
+  Luggage, CreditCard, Copy, Check
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface BookingLeg {
   id: string;
