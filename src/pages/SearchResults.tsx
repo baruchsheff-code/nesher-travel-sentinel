@@ -189,6 +189,12 @@ const SearchResults = () => {
     [destination]
   );
 
+  const handleSelectFlight = (flight: FlightResult) => {
+    if (destination) {
+      navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
+    }
+  };
+
   // Mock: user flew United in the last 6 months
   const recentAirlines = ["UA"];
 
