@@ -85,7 +85,7 @@ const AirportInput = ({ label, value, onChange, placeholder }: {
         )}
       </div>
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-[60] max-h-60 overflow-y-auto">
           {results.map((d) => (
             <button
               key={d.iata}
@@ -311,7 +311,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
             </span>
           </button>
           {showCalendar && (
-            <div className="absolute top-full left-0 mt-1 z-50">
+            <div className="absolute bottom-full left-0 mb-1 z-[60]">
               <InlineCalendar
                 selectedStart={departDate}
                 selectedEnd={tripType === "round-trip" ? returnDate : null}
@@ -357,7 +357,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
             </span>
           </button>
           {showTravelers && (
-            <div className="absolute top-full left-0 right-0 sm:right-auto sm:min-w-[280px] mt-1 bg-card border border-border rounded-2xl shadow-xl z-50 p-4">
+            <div className="absolute bottom-full left-0 right-0 sm:right-auto sm:min-w-[280px] mb-1 bg-card border border-border rounded-2xl shadow-xl z-[60] p-4">
               <Counter label="Adults" sub="18+" value={adults} onChange={setAdults} min={1} />
               <Counter label="Children" sub="2–17" value={children} onChange={setChildren} />
               <Counter label="Infants" sub="Under 2" value={infants} onChange={setInfants} />
