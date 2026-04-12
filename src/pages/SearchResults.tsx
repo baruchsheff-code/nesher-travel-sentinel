@@ -313,8 +313,8 @@ const SearchResults = () => {
   const fetchFlights = useCallback(async () => {
     setSearchError(false);
     if (!destination || !originIata || !dateStr) {
-      setFlights(destination ? getMockFlightsForDestination(destination.iata) : []);
-      setApiSource("mock");
+      setSearchError(true);
+      setFlights([]);
       setLoading(false);
       return;
     }
@@ -335,12 +335,14 @@ const SearchResults = () => {
 
       const offers = data?.offers;
       if (Array.isArray(offers) && offers.length > 0) {
-        setFlights(offers.map((o: any, i: number) => transformDuffelOffer(o, i)));
+        const transformed = offers
+          .map((o: any, i: number) => transformDuffelOffer(o, i))
+          .filter((f: FlightResult) => f.airlineCode !== "ZZ");
+        setFlights(transformed);
         setApiSource("duffel");
       } else {
-        console.warn("No Duffel offers returned, using mock data");
-        setFlights(getMockFlightsForDestination(destination.iata));
-        setApiSource("mock");
+        setSearchError(true);
+        setFlights([]);
       }
     } catch (err) {
       console.error("Duffel API error:", err);
