@@ -182,10 +182,39 @@ const PassengerForm = ({ grandTotal, onSubmit, onBack, isSubmitting }: Passenger
 
         {/* Passport Info */}
         <div className="rounded-2xl p-4 space-y-4" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileText size={16} className="text-primary" />
-            Passport Information
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileText size={16} className="text-primary" />
+              Passport Information
+            </p>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isScanning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors disabled:opacity-50"
+              style={{ backgroundColor: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}
+            >
+              {isScanning ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <ScanLine size={14} />
+                  Scan Passport
+                </>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleScanPassport}
+              className="hidden"
+            />
+          </div>
           <FormField
             label="Passport Number"
             value={form.passportNumber}
