@@ -28,11 +28,12 @@ interface Props {
 }
 
 // Airport autocomplete dropdown
-const AirportInput = ({ label, value, onChange, placeholder }: {
+const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
   label: string;
   value: Destination | null;
   onChange: (d: Destination) => void;
   placeholder: string;
+  hasError?: boolean;
 }) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -63,7 +64,10 @@ const AirportInput = ({ label, value, onChange, placeholder }: {
     <div ref={ref} className="relative flex-1 min-w-0">
       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">{label}</label>
       <div
-        className="input-gold-focus flex items-center gap-2 bg-input border border-border rounded-2xl px-3 cursor-text hover:border-primary/40 transition-all duration-150"
+        className={cn(
+          "input-gold-focus flex items-center gap-2 bg-input border rounded-2xl px-3 cursor-text hover:border-primary/40 transition-all duration-150",
+          hasError ? "border-destructive ring-1 ring-destructive/30" : "border-border"
+        )}
         style={{ height: 56 }}
         onClick={() => { if (!open) setOpen(true); }}
       >
@@ -234,6 +238,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
     if (tripType === "round-trip") {
       if (calendarFor === "depart") {
         setDepartDate(d);
+        setErrors(e => ({ ...e, departDate: false }));
         if (returnDate && isBefore(returnDate, d)) setReturnDate(null);
         setCalendarFor("return");
       } else {
@@ -246,14 +251,23 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       }
     } else {
       setDepartDate(d);
+      setErrors(e => ({ ...e, departDate: false }));
       setShowCalendar(false);
     }
   };
 
   const totalTravelers = adults + children + infants;
 
+  const [errors, setErrors] = useState<{ origin?: boolean; destination?: boolean; departDate?: boolean }>({});
+
   const handleSearch = () => {
-    if (!origin || !destination || !departDate) return;
+    const newErrors = {
+      origin: !origin,
+      destination: !destination,
+      departDate: !departDate,
+    };
+    setErrors(newErrors);
+    if (newErrors.origin || newErrors.destination || newErrors.departDate) return;
     onSearch({
       tripType, origin, destination, departDate, returnDate,
       adults, children, infants, cabinClass, directOnly, maxPrice
@@ -288,11 +302,11 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
 
       {/* Row 2: Origin / Destination */}
       <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-3">
-        <AirportInput label="From" value={origin} onChange={setOrigin} placeholder="City or airport" />
+        <AirportInput label="From" value={origin} onChange={(d) => { setOrigin(d); setErrors(e => ({ ...e, origin: false })); }} placeholder="City or airport" hasError={errors.origin} />
         <button onClick={swap} className="swap-btn self-center shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted/50 transition-all duration-200 bg-card text-muted-foreground hover:text-primary">
           <ArrowRightLeft size={16} />
         </button>
-        <AirportInput label="To" value={destination} onChange={setDestination} placeholder="City or airport" />
+        <AirportInput label="To" value={destination} onChange={(d) => { setDestination(d); setErrors(e => ({ ...e, destination: false })); }} placeholder="City or airport" hasError={errors.destination} />
       </div>
 
       {/* Row 2b: Date + Travelers */}
@@ -302,7 +316,10 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">Depart</label>
           <button
             onClick={() => { setCalendarFor("depart"); setShowCalendar(!showCalendar); }}
-            className="input-gold-focus w-full flex items-center gap-2 bg-input border border-border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150"
+            className={cn(
+              "input-gold-focus w-full flex items-center gap-2 bg-input border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150",
+              errors.departDate ? "border-destructive ring-1 ring-destructive/30" : "border-border"
+            )}
             style={{ height: 56 }}
           >
             <CalendarDays size={14} className="text-muted-foreground" />
@@ -420,18 +437,8 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       {/* Search button */}
       <button
         onClick={handleSearch}
-        disabled={!origin || !destination || !departDate}
-        className={cn(
-          "w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 rounded-full font-bold text-base transition-all duration-150",
-          origin && destination && departDate
-            ? "hover:brightness-110 hover:scale-[1.02] shadow-lg"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-        style={
-          origin && destination && departDate
-            ? { height: 56, backgroundColor: "#C9A84C", color: "#0A0F1E" }
-            : { height: 56 }
-        }
+        className="w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 rounded-full font-bold text-base transition-all duration-150 hover:brightness-110 hover:scale-[1.02] shadow-lg"
+        style={{ height: 56, backgroundColor: "#C9A84C", color: "#0A0F1E" }}
       >
         <Search size={18} strokeWidth={2.5} />
         Search flights

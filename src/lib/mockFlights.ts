@@ -12,6 +12,7 @@ export interface FlightResult {
   durationFormatted: string;
   stops: number;
   priceUsd: number;
+  totalCurrency?: string;
   prediction: "buy" | "wait";
   predictionConfidence: number;
   pointsEarn: number;
@@ -23,6 +24,8 @@ export interface FlightResult {
   splitDetails?: string;
   isResilientCarrier: boolean;
   layoverAirport?: string;
+  stopAirports?: string[];
+  expiresAt?: string;
 }
 
 export function getMockFlightsForDestination(destinationIata: string): FlightResult[] {

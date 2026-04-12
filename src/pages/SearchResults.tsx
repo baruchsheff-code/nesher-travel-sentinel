@@ -1,5 +1,6 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -10,7 +11,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type Tab = "best" | "direct" | "crisis";
+type SortMode = "best" | "cheapest" | "fastest";
 
 const SafetyBanner = ({ iata, city }: { iata: string; city: string }) => {
   const info = MOCK_SAFETY[iata];
@@ -48,6 +49,36 @@ const SafetyBadge = ({ score }: { score: number }) => {
       <div className="rounded-full" style={{ width: 8, height: 8, backgroundColor: color }} />
       <span className="text-xs font-bold" style={{ color }}>{score}</span>
     </div>
+  );
+};
+
+const currencySymbol = (c: string) => {
+  const map: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", ILS: "₪" };
+  return map[c] || c + " ";
+};
+
+const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
+  const [remaining, setRemaining] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setRemaining("Expired"); return; }
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setRemaining(`${mins}:${secs.toString().padStart(2, "0")}`);
+      setIsUrgent(mins < 5);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [expiresAt]);
+
+  return (
+    <span className={cn("text-[10px] font-medium", isUrgent ? "text-amber-500" : "text-muted-foreground")}>
+      Fare expires in {remaining}
+    </span>
   );
 };
 
@@ -103,7 +134,11 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
             <Plane size={14} className="text-muted-foreground" />
             <div className="flex-1 h-px bg-border" />
           </div>
-          <p className="text-[11px] text-muted-foreground">{flight.stops === 0 ? "Nonstop" : flight.stops === 1 ? `1 stop${flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}` : `${flight.stops} stops`}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {flight.stops === 0 ? "Nonstop" : flight.stops === 1
+              ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
+              : `${flight.stops} stops`}
+          </p>
         </div>
         <div className="text-center">
           <p className="text-xl font-bold text-foreground">
@@ -116,7 +151,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
 
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-primary">${flight.priceUsd.toLocaleString()}</span>
+          <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${predColor}18`, color: predColor }}>
             {flight.prediction === "buy" ? "Buy Now" : "Wait"} · {flight.predictionConfidence}%
           </span>
@@ -129,6 +164,12 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
       <button onClick={(e) => { e.stopPropagation(); onWatch?.(); }} className="w-full rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 mb-3 transition-colors hover:opacity-80 bg-muted text-muted-foreground">
         <Eye size={13} /> Watch this fare 👁️
       </button>
+
+      {flight.expiresAt && (
+        <div className="mb-2">
+          <FareExpiry expiresAt={flight.expiresAt} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
@@ -214,6 +255,7 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     stops,
     layoverAirport,
     priceUsd: parseFloat(offer.total_amount) || 0,
+    totalCurrency: offer.total_currency || "USD",
     prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
     pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
@@ -223,18 +265,21 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     isSkiplag: false,
     isSplitTicket: false,
     isResilientCarrier: false,
+    stopAirports: segments.length > 1 ? segments.slice(0, -1).map((s: any) => s.destination?.iata_code || "") : [],
+    expiresAt: offer.expires_at || undefined,
   };
 }
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("best");
+  const [activeTab, setActiveTab] = useState<SortMode>("best");
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
   const [apiSource, setApiSource] = useState<"duffel" | "mock">("mock");
+  const [searchError, setSearchError] = useState(false);
 
   // Parse params
   const destIata = searchParams.get("dest") || "";
@@ -256,8 +301,8 @@ const SearchResults = () => {
 
   // Fetch flights from Duffel API via edge function
   const fetchFlights = useCallback(async () => {
+    setSearchError(false);
     if (!destination || !originIata || !dateStr) {
-      // Fall back to mock if missing params
       setFlights(destination ? getMockFlightsForDestination(destination.iata) : []);
       setApiSource("mock");
       setLoading(false);
@@ -276,22 +321,21 @@ const SearchResults = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
       if (Array.isArray(offers) && offers.length > 0) {
         setFlights(offers.map((o: any, i: number) => transformDuffelOffer(o, i)));
         setApiSource("duffel");
       } else {
-        // No offers returned — fall back to mock
         console.warn("No Duffel offers returned, using mock data");
         setFlights(getMockFlightsForDestination(destination.iata));
         setApiSource("mock");
       }
     } catch (err) {
-      console.error("Duffel API error, falling back to mock:", err);
-      toast.error("Having trouble loading live fares. Showing sample results.");
-      setFlights(getMockFlightsForDestination(destination.iata));
-      setApiSource("mock");
+      console.error("Duffel API error:", err);
+      setSearchError(true);
+      setFlights([]);
     } finally {
       setLoading(false);
     }
@@ -324,21 +368,45 @@ const SearchResults = () => {
   };
 
   const recentAirlines = ["UA"];
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: SortMode; label: string }[] = [
     { key: "best", label: "Best Value" },
-    { key: "direct", label: "Most Direct" },
-    { key: "crisis", label: "Crisis-Safe" },
+    { key: "cheapest", label: "Cheapest" },
+    { key: "fastest", label: "Fastest" },
   ];
+
+  // Parse duration string like "10h 30m" to minutes for sorting
+  const parseDuration = (d: string) => {
+    const m = d.match(/(\d+)h\s*(\d+)m/);
+    return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 9999;
+  };
 
   const sortedFlights = useMemo(() => {
     const list = [...flights];
-    if (activeTab === "direct") list.sort((a, b) => a.stops - b.stops || a.priceUsd - b.priceUsd);
-    else if (activeTab === "crisis") list.sort((a, b) => (b.isResilientCarrier ? 1 : 0) - (a.isResilientCarrier ? 1 : 0));
-    else list.sort((a, b) => a.priceUsd - b.priceUsd);
+    if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
+    else if (activeTab === "fastest") list.sort((a, b) => parseDuration(a.durationFormatted) - parseDuration(b.durationFormatted));
+    else list.sort((a, b) => a.priceUsd * (a.stops + 1) - b.priceUsd * (b.stops + 1)); // best value heuristic
     return list;
   }, [flights, activeTab]);
 
   if (loading) return <SearchLoadingScreen />;
+
+  if (searchError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4">
+        <Bird size={48} className="text-primary" strokeWidth={2.5} />
+        <h2 className="text-lg font-semibold text-foreground text-center">We couldn't load live fares right now.</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-sm">Try adjusting your dates or search again.</p>
+        <button
+          onClick={() => { setLoading(true); fetchFlights(); }}
+          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:brightness-110"
+          style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}
+        >
+          <RefreshCw size={16} /> Try again
+        </button>
+        <button onClick={() => navigate("/")} className="text-sm text-primary underline mt-2">Back to search</button>
+      </div>
+    );
+  }
 
   if (!destination) {
     return (
@@ -398,7 +466,7 @@ const SearchResults = () => {
         )}
 
         <p className="text-sm font-semibold mt-2 text-foreground">
-          {sortedFlights.length} flights found · Sorted by best value
+          {sortedFlights.length} flights found · {destination.city}{destination.country ? `, ${destination.country}` : ""}{formattedDate ? ` · ${formattedDate}` : ""}
           {apiSource === "mock" && <span className="text-xs text-muted-foreground ml-2">(Demo data)</span>}
           {apiSource === "duffel" && <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>}
         </p>
