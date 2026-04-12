@@ -252,8 +252,16 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
 
   const totalTravelers = adults + children + infants;
 
+  const [errors, setErrors] = useState<{ origin?: boolean; destination?: boolean; departDate?: boolean }>({});
+
   const handleSearch = () => {
-    if (!origin || !destination || !departDate) return;
+    const newErrors = {
+      origin: !origin,
+      destination: !destination,
+      departDate: !departDate,
+    };
+    setErrors(newErrors);
+    if (newErrors.origin || newErrors.destination || newErrors.departDate) return;
     onSearch({
       tripType, origin, destination, departDate, returnDate,
       adults, children, infants, cabinClass, directOnly, maxPrice
