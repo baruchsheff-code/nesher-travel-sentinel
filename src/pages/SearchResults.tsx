@@ -82,7 +82,7 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; apiSource?: "duffel" | "mock" }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
@@ -100,7 +100,6 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <SafetyBadge score={flight.safetyScore} />
-        {apiSource === "mock" && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>}
       </div>
 
       {flight.isSkiplag && (
