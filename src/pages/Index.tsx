@@ -26,10 +26,14 @@ const Index = () => {
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    searchCountRef.current += 1;
+    const shouldShowUpgrade = searchCountRef.current >= 2 && tier === "free" && user;
+
     const directMatch = parseDestination(trimmed);
     const isSimple = trimmed.split(/\s+/).length <= 2 && directMatch;
 
     if (isSimple) {
+      if (shouldShowUpgrade) setTimeout(() => setShowPremium(true), 500);
       navigate(`/search?q=${encodeURIComponent(trimmed)}`);
       return;
     }
