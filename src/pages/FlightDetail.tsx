@@ -85,7 +85,12 @@ const FlightDetail = () => {
 
   const grandTotal = flight.priceUsd + aiFee + extrasTotal;
 
-  const handleBook = async () => {
+  const handleBookClick = () => {
+    setShowPassengerForm(true);
+  };
+
+  const handlePassengerSubmit = async (data: PassengerData) => {
+    setPassengerData(data);
     setIsBooking(true);
     await new Promise((r) => setTimeout(r, 2000));
     setIsBooking(false);
