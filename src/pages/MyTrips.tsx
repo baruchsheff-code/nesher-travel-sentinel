@@ -275,6 +275,31 @@ const TripCard = ({ booking, onDetail }: { booking: Booking; onDetail: () => voi
         </div>
       )}
 
+      {/* Offline sync status */}
+      {upcoming && (
+        <div className="flex items-center justify-between text-[11px]">
+          {offlineData ? (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Download size={10} className="text-primary" />
+              📥 Trip saved offline · Last synced {syncAgo}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              {isOffline ? <WifiOff size={10} /> : <Download size={10} />}
+              {isOffline ? "No offline data" : "Not synced yet"}
+            </span>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSync(); }}
+            disabled={syncing || isOffline}
+            className="flex items-center gap-1 text-primary font-medium disabled:opacity-50"
+          >
+            <RefreshCw size={10} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync now"}
+          </button>
+        </div>
+      )}
+
       {/* Quick action row */}
       {upcoming && (
         <div className="flex gap-2">
