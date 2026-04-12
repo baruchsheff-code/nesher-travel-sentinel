@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, Bird, Plane, Clock, CheckCircle2, AlertTriangle, MapPin, Calendar, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -41,7 +41,11 @@ const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle2; color: string; 
   cancelled: { icon: AlertTriangle, color: "hsl(var(--destructive))", label: "Cancelled" },
   landed: { icon: CheckCircle2, color: "#34a853", label: "Landed" },
   boarding: { icon: Plane, color: "hsl(var(--primary))", label: "Boarding" },
+  departed: { icon: Plane, color: "#34a853", label: "Departed" },
+  in_air: { icon: Plane, color: "hsl(var(--primary))", label: "In Air" },
 };
+
+const DEMO_STATUS_CYCLE = ["scheduled", "on_time", "boarding", "departed", "in_air", "landed"];
 
 const MOCK_BOOKINGS: Booking[] = [
   {
