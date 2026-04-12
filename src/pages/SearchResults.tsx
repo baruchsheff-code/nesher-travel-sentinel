@@ -390,6 +390,24 @@ const SearchResults = () => {
 
   if (loading) return <SearchLoadingScreen />;
 
+  if (searchError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-4">
+        <Bird size={48} className="text-primary" strokeWidth={2.5} />
+        <h2 className="text-lg font-semibold text-foreground text-center">We couldn't load live fares right now.</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-sm">Try adjusting your dates or search again.</p>
+        <button
+          onClick={() => { setLoading(true); fetchFlights(); }}
+          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm transition-all hover:brightness-110"
+          style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}
+        >
+          <RefreshCw size={16} /> Try again
+        </button>
+        <button onClick={() => navigate("/")} className="text-sm text-primary underline mt-2">Back to search</button>
+      </div>
+    );
+  }
+
   if (!destination) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
