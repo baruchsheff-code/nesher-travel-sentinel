@@ -51,6 +51,36 @@ const SafetyBadge = ({ score }: { score: number }) => {
   );
 };
 
+const currencySymbol = (c: string) => {
+  const map: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", ILS: "₪" };
+  return map[c] || c + " ";
+};
+
+const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
+  const [remaining, setRemaining] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setRemaining("Expired"); return; }
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setRemaining(`${mins}:${secs.toString().padStart(2, "0")}`);
+      setIsUrgent(mins < 5);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [expiresAt]);
+
+  return (
+    <span className={cn("text-[10px] font-medium", isUrgent ? "text-amber-500" : "text-muted-foreground")}>
+      Fare expires in {remaining}
+    </span>
+  );
+};
+
 const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; apiSource?: "duffel" | "mock" }) => {
   const [expanded, setExpanded] = useState(false);
 
