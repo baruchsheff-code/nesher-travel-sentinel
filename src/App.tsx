@@ -30,6 +30,7 @@ const App = () => (
             <Route path="/flight" element={<FlightDetail />} />
             <Route path="/my-trips" element={<MyTrips />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/support" element={<Settings />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
