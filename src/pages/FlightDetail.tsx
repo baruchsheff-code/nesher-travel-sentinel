@@ -119,6 +119,11 @@ const FlightDetail = () => {
         <p className="text-sm text-muted-foreground mt-2 text-center">
           {flight.airlineName} {flight.flightNumber} · {flight.originIata} → {flight.destinationIata}
         </p>
+        {passengerData && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {passengerData.firstName} {passengerData.lastName}
+          </p>
+        )}
         <div className="rounded-2xl p-4 mt-6 w-full max-w-sm" style={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Confirmation</span>
