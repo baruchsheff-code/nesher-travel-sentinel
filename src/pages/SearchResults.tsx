@@ -134,7 +134,11 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
             <Plane size={14} className="text-muted-foreground" />
             <div className="flex-1 h-px bg-border" />
           </div>
-          <p className="text-[11px] text-muted-foreground">{flight.stops === 0 ? "Nonstop" : flight.stops === 1 ? `1 stop${flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}` : `${flight.stops} stops`}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {flight.stops === 0 ? "Nonstop" : flight.stops === 1
+              ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
+              : `${flight.stops} stops`}
+          </p>
         </div>
         <div className="text-center">
           <p className="text-xl font-bold text-foreground">
@@ -147,7 +151,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
 
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-primary">${flight.priceUsd.toLocaleString()}</span>
+          <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${predColor}18`, color: predColor }}>
             {flight.prediction === "buy" ? "Buy Now" : "Wait"} · {flight.predictionConfidence}%
           </span>
