@@ -28,11 +28,12 @@ interface Props {
 }
 
 // Airport autocomplete dropdown
-const AirportInput = ({ label, value, onChange, placeholder }: {
+const AirportInput = ({ label, value, onChange, placeholder, hasError }: {
   label: string;
   value: Destination | null;
   onChange: (d: Destination) => void;
   placeholder: string;
+  hasError?: boolean;
 }) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
