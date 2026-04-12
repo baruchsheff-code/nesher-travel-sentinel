@@ -208,49 +208,101 @@ const MyTrips = () => {
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(30);
+  const refreshCycleRef = useRef(0);
 
-  useEffect(() => {
-    if (authLoading) return;
+  const simulateDemoStatusUpdate = useCallback((current: Booking[]): Booking[] => {
+    return current.map((b) => ({
+      ...b,
+      booking_legs: b.booking_legs.map((leg) => {
+        if (!isUpcoming({ ...b, booking_legs: [leg] })) return leg;
+        const currentIdx = DEMO_STATUS_CYCLE.indexOf(leg.flight_status || "scheduled");
+        // Randomly advance status sometimes for demo effect
+        const shouldAdvance = Math.random() > 0.5 && currentIdx < DEMO_STATUS_CYCLE.length - 1;
+        const newStatus = shouldAdvance ? DEMO_STATUS_CYCLE[currentIdx + 1] : leg.flight_status;
+        // Simulate gate changes
+        const gates = ["B22", "B24", "C11", "A3", "D17"];
+        const newGate = shouldAdvance ? gates[Math.floor(Math.random() * gates.length)] : leg.gate;
+        return { ...leg, flight_status: newStatus, gate: newGate };
+      }),
+    }));
+  }, []);
+
+  const fetchBookings = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setIsRefreshing(true);
+
     if (!user) {
-      // Show demo data for non-authenticated users
-      setBookings(MOCK_BOOKINGS);
+      setBookings((prev) => {
+        const updated = prev.length ? simulateDemoStatusUpdate(prev) : MOCK_BOOKINGS;
+        return updated;
+      });
+      setLastRefresh(new Date());
+      setIsRefreshing(false);
       setLoading(false);
+      setSecondsUntilRefresh(30);
       return;
     }
 
-    const fetchBookings = async () => {
-      setLoading(true);
-      const { data: bookingsData, error } = await supabase
-        .from("bookings")
-        .select("*")
-        .order("created_at", { ascending: false });
+    const { data: bookingsData, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      if (error || !bookingsData?.length) {
-        // Fall back to mock data if no real bookings
-        setBookings(MOCK_BOOKINGS);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch legs for each booking
-      const bookingIds = bookingsData.map((b) => b.id);
-      const { data: legsData } = await supabase
-        .from("booking_legs")
-        .select("*")
-        .in("booking_id", bookingIds)
-        .order("leg_number", { ascending: true });
-
-      const merged: Booking[] = bookingsData.map((b) => ({
-        ...b,
-        booking_legs: (legsData || []).filter((l) => l.booking_id === b.id),
-      }));
-
-      setBookings(merged.length ? merged : MOCK_BOOKINGS);
+    if (error || !bookingsData?.length) {
+      setBookings((prev) => prev.length ? simulateDemoStatusUpdate(prev) : MOCK_BOOKINGS);
+      setLastRefresh(new Date());
+      setIsRefreshing(false);
       setLoading(false);
-    };
+      setSecondsUntilRefresh(30);
+      return;
+    }
 
-    fetchBookings();
-  }, [user, authLoading]);
+    const bookingIds = bookingsData.map((b) => b.id);
+    const { data: legsData } = await supabase
+      .from("booking_legs")
+      .select("*")
+      .in("booking_id", bookingIds)
+      .order("leg_number", { ascending: true });
+
+    const merged: Booking[] = bookingsData.map((b) => ({
+      ...b,
+      booking_legs: (legsData || []).filter((l) => l.booking_id === b.id),
+    }));
+
+    setBookings(merged.length ? merged : MOCK_BOOKINGS);
+    setLastRefresh(new Date());
+    setIsRefreshing(false);
+    setLoading(false);
+    setSecondsUntilRefresh(30);
+  }, [user, simulateDemoStatusUpdate]);
+
+  // Initial load
+  useEffect(() => {
+    if (authLoading) return;
+    fetchBookings(false);
+  }, [user, authLoading, fetchBookings]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      refreshCycleRef.current += 1;
+      fetchBookings(true);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loading, fetchBookings]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (loading) return;
+    const tick = setInterval(() => {
+      setSecondsUntilRefresh((prev) => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [loading]);
 
   const upcoming = bookings.filter(isUpcoming);
   const past = bookings.filter((b) => !isUpcoming(b));
@@ -258,13 +310,35 @@ const MyTrips = () => {
   return (
     <div className="min-h-screen bg-background px-4 pb-8">
       {/* Header */}
-      <div className="pt-6 flex items-center gap-3 animate-fade-in">
-        <button onClick={() => navigate("/")} className="p-2 rounded-full hover:bg-card transition-colors">
-          <ArrowLeft size={20} className="text-foreground" />
-        </button>
+      <div className="pt-6 flex items-center justify-between animate-fade-in">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/")} className="p-2 rounded-full hover:bg-card transition-colors">
+            <ArrowLeft size={20} className="text-foreground" />
+          </button>
+          <div className="flex items-center gap-2">
+            <Bird className="text-primary" size={24} strokeWidth={2.5} />
+            <span className="text-foreground font-bold text-xl">My Trips</span>
+          </div>
+        </div>
+        {/* Live indicator */}
         <div className="flex items-center gap-2">
-          <Bird className="text-primary" size={24} strokeWidth={2.5} />
-          <span className="text-foreground font-bold text-xl">My Trips</span>
+          <button
+            onClick={() => fetchBookings(true)}
+            disabled={isRefreshing}
+            className="p-2 rounded-full hover:bg-card transition-colors"
+            aria-label="Refresh"
+          >
+            <RefreshCw size={16} className={`text-muted-foreground ${isRefreshing ? "animate-spin" : ""}`} />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <div className="relative flex items-center justify-center" style={{ width: 8, height: 8 }}>
+              <div className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: "#34a853" }} />
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#34a853" }} />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {secondsUntilRefresh}s
+            </span>
+          </div>
         </div>
       </div>
 
