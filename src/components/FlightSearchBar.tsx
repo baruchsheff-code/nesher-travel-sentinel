@@ -63,7 +63,8 @@ const AirportInput = ({ label, value, onChange, placeholder }: {
     <div ref={ref} className="relative flex-1 min-w-0">
       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">{label}</label>
       <div
-        className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5 cursor-text hover:border-primary/40 transition-colors"
+        className="input-gold-focus flex items-center gap-2 bg-input border border-border rounded-2xl px-3 cursor-text hover:border-primary/40 transition-all duration-150"
+        style={{ height: 56 }}
         onClick={() => { if (!open) setOpen(true); }}
       >
         <Search size={14} className="text-muted-foreground shrink-0" />
@@ -84,7 +85,7 @@ const AirportInput = ({ label, value, onChange, placeholder }: {
         )}
       </div>
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto">
           {results.map((d) => (
             <button
               key={d.iata}
@@ -156,7 +157,7 @@ const InlineCalendar = ({ selectedStart, selectedEnd, onSelect, isRange }: {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 shadow-xl">
+    <div className="bg-card border border-border rounded-2xl p-4 shadow-xl">
       <div className="flex items-center justify-between mb-3">
         <button onClick={() => setBaseMonth(addMonths(baseMonth, -1))} className="text-muted-foreground hover:text-foreground p-1">←</button>
         <button onClick={() => setBaseMonth(addMonths(baseMonth, 1))} className="text-muted-foreground hover:text-foreground p-1">→</button>
@@ -274,10 +275,10 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
             key={t.key}
             onClick={() => { setTripType(t.key); if (t.key === "one-way") setReturnDate(null); }}
             className={cn(
-              "px-3 py-1 rounded-full text-xs font-semibold transition-colors",
+              "px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200",
               tripType === t.key
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
+                ? "bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             {t.label}
@@ -288,7 +289,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       {/* Row 2: Origin / Destination */}
       <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-3">
         <AirportInput label="From" value={origin} onChange={setOrigin} placeholder="City or airport" />
-        <button onClick={swap} className="self-center shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted/50 transition-colors bg-card text-muted-foreground hover:text-foreground">
+        <button onClick={swap} className="swap-btn self-center shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted/50 transition-all duration-200 bg-card text-muted-foreground hover:text-primary">
           <ArrowRightLeft size={16} />
         </button>
         <AirportInput label="To" value={destination} onChange={setDestination} placeholder="City or airport" />
@@ -301,7 +302,8 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">Depart</label>
           <button
             onClick={() => { setCalendarFor("depart"); setShowCalendar(!showCalendar); }}
-            className="w-full flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5 text-left hover:border-primary/40 transition-colors"
+            className="input-gold-focus w-full flex items-center gap-2 bg-input border border-border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150"
+            style={{ height: 56 }}
           >
             <CalendarDays size={14} className="text-muted-foreground" />
             <span className={cn("text-sm", departDate ? "text-foreground font-medium" : "text-muted-foreground")}>
@@ -327,11 +329,12 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
             disabled={tripType === "one-way"}
             onClick={() => { setCalendarFor("return"); setShowCalendar(!showCalendar); }}
             className={cn(
-              "w-full flex items-center gap-2 border rounded-xl px-3 py-2.5 text-left transition-colors",
+              "input-gold-focus w-full flex items-center gap-2 border rounded-2xl px-3 text-left transition-all duration-150",
               tripType === "one-way"
                 ? "bg-muted/30 border-border/50 cursor-not-allowed"
-                : "bg-card border-border hover:border-primary/40"
+                : "bg-input border-border hover:border-primary/40"
             )}
+            style={{ height: 56 }}
           >
             <CalendarDays size={14} className="text-muted-foreground" />
             <span className={cn("text-sm", tripType === "one-way" ? "text-muted-foreground/50" : returnDate ? "text-foreground font-medium" : "text-muted-foreground")}>
@@ -345,7 +348,8 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">Travelers</label>
           <button
             onClick={() => setShowTravelers(!showTravelers)}
-            className="w-full flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2.5 text-left hover:border-primary/40 transition-colors"
+            className="input-gold-focus w-full flex items-center gap-2 bg-input border border-border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150"
+            style={{ height: 56 }}
           >
             <Users size={14} className="text-muted-foreground" />
             <span className="text-sm text-foreground font-medium">
@@ -353,7 +357,7 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
             </span>
           </button>
           {showTravelers && (
-            <div className="absolute top-full left-0 right-0 sm:right-auto sm:min-w-[280px] mt-1 bg-card border border-border rounded-xl shadow-xl z-50 p-4">
+            <div className="absolute top-full left-0 right-0 sm:right-auto sm:min-w-[280px] mt-1 bg-card border border-border rounded-2xl shadow-xl z-50 p-4">
               <Counter label="Adults" sub="18+" value={adults} onChange={setAdults} min={1} />
               <Counter label="Children" sub="2–17" value={children} onChange={setChildren} />
               <Counter label="Infants" sub="Under 2" value={infants} onChange={setInfants} />
@@ -381,11 +385,11 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
       </div>
 
       {/* More options */}
-      <button onClick={() => setShowMore(!showMore)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3 transition-colors">
+      <button onClick={() => setShowMore(!showMore)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-3 transition-colors">
         More options {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
       {showMore && (
-        <div className="bg-card border border-border rounded-xl p-4 mb-4 space-y-3">
+        <div className="bg-card border border-border rounded-2xl p-4 mb-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-foreground">Direct flights only</span>
             <button
@@ -418,13 +422,18 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
         onClick={handleSearch}
         disabled={!origin || !destination || !departDate}
         className={cn(
-          "w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 py-3 rounded-full font-semibold text-base transition-all",
+          "w-full sm:w-auto sm:ml-auto sm:flex flex items-center justify-center gap-2 px-8 rounded-full font-bold text-base transition-all duration-150",
           origin && destination && departDate
-            ? "bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/20"
+            ? "hover:brightness-110 hover:scale-[1.02] shadow-lg"
             : "bg-muted text-muted-foreground cursor-not-allowed"
         )}
+        style={
+          origin && destination && departDate
+            ? { height: 56, backgroundColor: "#C9A84C", color: "#0A0F1E" }
+            : { height: 56 }
+        }
       >
-        <Bird size={18} strokeWidth={2.5} />
+        <Search size={18} strokeWidth={2.5} />
         Search flights
       </button>
     </div>

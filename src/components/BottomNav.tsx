@@ -13,7 +13,7 @@ const BottomNav = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border">
       <div className="flex items-center justify-around py-2 max-w-lg mx-auto">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
@@ -23,21 +23,25 @@ const BottomNav = () => {
               onClick={() => navigate(tab.path)}
               className="flex flex-col items-center gap-0.5 px-4 py-1 relative"
             >
-              {isActive && (
-                <div
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full"
-                  style={{ backgroundColor: "hsl(var(--primary))" }}
-                />
-              )}
               <tab.icon
                 size={20}
-                className={isActive ? "text-primary" : "text-muted-foreground"}
+                style={isActive ? { color: "#C9A84C" } : undefined}
+                className={isActive ? "" : "text-muted-foreground"}
               />
               <span
-                className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                className="text-[10px] font-medium"
+                style={isActive ? { color: "#C9A84C" } : undefined}
               >
-                {tab.label}
+                {isActive ? undefined : <span className="text-muted-foreground">{tab.label}</span>}
+                {isActive && tab.label}
               </span>
+              {/* Gold dot indicator */}
+              {isActive && (
+                <div
+                  className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full"
+                  style={{ width: 4, height: 4, backgroundColor: "#C9A84C" }}
+                />
+              )}
             </button>
           );
         })}
