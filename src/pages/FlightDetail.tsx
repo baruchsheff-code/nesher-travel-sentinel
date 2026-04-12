@@ -418,6 +418,13 @@ const FlightDetail = () => {
               />
             </div>
           </div>
+
+          {/* 4. SEAT SELECTION */}
+          <SeatSelector
+            selectedSeat={selectedSeat}
+            onSelect={setSelectedSeat}
+            cabinClass={flight.cabinClass}
+          />
         </div>
 
         {/* 4. BOOK BUTTON - Fixed bottom */}
