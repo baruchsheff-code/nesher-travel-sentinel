@@ -2,11 +2,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil } from "lucide-react";
 import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import PriceWatchModal from "@/components/PriceWatchModal";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Tab = "best" | "direct" | "crisis";
 
@@ -162,6 +164,55 @@ function findDestByIata(iata: string): Destination | null {
   return null;
 }
 
+// Transform Duffel offer into FlightResult
+function transformDuffelOffer(offer: any, index: number): FlightResult {
+  const slice = offer.slices?.[0];
+  const segment = slice?.segments?.[0];
+  const carrier = segment?.operating_carrier || segment?.marketing_carrier || {};
+  
+  const depTime = segment?.departing_at ? format(new Date(segment.departing_at), "HH:mm") : "00:00";
+  const arrTime = segment?.arriving_at ? format(new Date(segment.arriving_at), "HH:mm") : "00:00";
+  const depDate = segment?.departing_at ? new Date(segment.departing_at).getDate() : 0;
+  const arrDate = segment?.arriving_at ? new Date(segment.arriving_at).getDate() : 0;
+  
+  const totalSegments = slice?.segments?.length || 1;
+  const stops = totalSegments - 1;
+  
+  // Duration from slice
+  const durationIso = slice?.duration || "";
+  const durationMatch = durationIso.match(/PT(\d+)H(?:(\d+)M)?/);
+  const durationFormatted = durationMatch 
+    ? `${durationMatch[1]}h ${durationMatch[2] || "0"}m` 
+    : "—";
+
+  const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
+
+  return {
+    id: offer.id || `duffel-${index}`,
+    airlineCode: carrier.iata_code || "??",
+    airlineName: carrier.name || "Unknown Airline",
+    flightNumber: segment?.marketing_carrier_flight_number ? `${carrier.iata_code || ""}${segment.marketing_carrier_flight_number}` : "—",
+    cabinClass: cabinMap[offer.cabin_class] || offer.cabin_class || "Economy",
+    originIata: segment?.origin?.iata_code || slice?.origin?.iata_code || "???",
+    destinationIata: slice?.segments?.[totalSegments - 1]?.destination?.iata_code || "???",
+    departureTime: depTime,
+    arrivalTime: arrTime,
+    arrivesNextDay: arrDate !== depDate,
+    durationFormatted,
+    stops,
+    priceUsd: parseFloat(offer.total_amount) || 0,
+    prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
+    predictionConfidence: Math.floor(60 + Math.random() * 30),
+    pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
+    pointsCard: "Your Card",
+    visaInfo: "Check visa requirements",
+    safetyScore: 8,
+    isSkiplag: false,
+    isSplitTicket: false,
+    isResilientCarrier: false,
+  };
+}
+
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -169,6 +220,8 @@ const SearchResults = () => {
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
+  const [flights, setFlights] = useState<FlightResult[]>([]);
+  const [apiSource, setApiSource] = useState<"duffel" | "mock">("mock");
 
   // Parse params
   const destIata = searchParams.get("dest") || "";
@@ -181,23 +234,60 @@ const SearchResults = () => {
   const adultsParam = Number(searchParams.get("adults") || "1");
   const tripType = searchParams.get("tripType") || "one-way";
 
-  // Legacy support: if no dest param but has q param
+  // Legacy support
   const legacyQuery = searchParams.get("q") || "";
   const destination = useMemo(() => {
     if (destIata) return findDestByIata(destIata) || { iata: destIata, city: destCity, country: destCountry, flag: destFlag, airport: "" };
     return parseDestination(legacyQuery);
   }, [destIata, destCity, destCountry, destFlag, legacyQuery]);
 
-  const flights = useMemo(
-    () => (destination ? getMockFlightsForDestination(destination.iata) : []),
-    [destination]
-  );
+  // Fetch flights from Duffel API via edge function
+  const fetchFlights = useCallback(async () => {
+    if (!destination || !originIata || !dateStr) {
+      // Fall back to mock if missing params
+      setFlights(destination ? getMockFlightsForDestination(destination.iata) : []);
+      setApiSource("mock");
+      setLoading(false);
+      return;
+    }
 
-  // Simulate loading
+    try {
+      const { data, error } = await supabase.functions.invoke("search-flights", {
+        body: {
+          origin: originIata,
+          destination: destination.iata,
+          departure_date: dateStr,
+          cabin_class: cabinClass,
+          adult_count: adultsParam,
+        },
+      });
+
+      if (error) throw error;
+
+      const offers = data?.offers;
+      if (Array.isArray(offers) && offers.length > 0) {
+        setFlights(offers.map((o: any, i: number) => transformDuffelOffer(o, i)));
+        setApiSource("duffel");
+      } else {
+        // No offers returned — fall back to mock
+        console.warn("No Duffel offers returned, using mock data");
+        setFlights(getMockFlightsForDestination(destination.iata));
+        setApiSource("mock");
+      }
+    } catch (err) {
+      console.error("Duffel API error, falling back to mock:", err);
+      toast.error("Live search unavailable — showing sample results");
+      setFlights(getMockFlightsForDestination(destination.iata));
+      setApiSource("mock");
+    } finally {
+      setLoading(false);
+    }
+  }, [destination, originIata, dateStr, cabinClass, adultsParam]);
+
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    setLoading(true);
+    fetchFlights();
+  }, [fetchFlights]);
 
   const handleSelectFlight = (flight: FlightResult) => {
     if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
@@ -218,8 +308,6 @@ const SearchResults = () => {
     sp.set("tripType", params.tripType);
     navigate(`/search?${sp.toString()}`);
     setEditSearch(false);
-    setLoading(true);
-    setTimeout(() => setLoading(false), 2500);
   };
 
   const recentAirlines = ["UA"];
@@ -298,6 +386,8 @@ const SearchResults = () => {
 
         <p className="text-sm font-semibold mt-2 text-foreground">
           {sortedFlights.length} flights found · Sorted by best value
+          {apiSource === "mock" && <span className="text-xs text-muted-foreground ml-2">(Demo data)</span>}
+          {apiSource === "duffel" && <span className="text-xs ml-2" style={{ color: "#22C55E" }}>● Live</span>}
         </p>
       </div>
 
