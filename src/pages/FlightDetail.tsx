@@ -98,7 +98,17 @@ const FlightDetail = () => {
     toast.success("Booking confirmed! (Demo)");
   };
 
-  if (bookingComplete) {
+  if (showPassengerForm && !bookingComplete) {
+    return (
+      <PassengerForm
+        grandTotal={grandTotal}
+        onSubmit={handlePassengerSubmit}
+        onBack={() => setShowPassengerForm(false)}
+        isSubmitting={isBooking}
+      />
+    );
+  }
+
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 animate-fade-in">
         <div className="rounded-full p-4 mb-6" style={{ backgroundColor: "rgba(34, 197, 94, 0.15)" }}>
