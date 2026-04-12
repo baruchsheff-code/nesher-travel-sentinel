@@ -134,7 +134,7 @@ const Settings = () => {
     }
   };
 
-
+  if (!authLoading && !user) {
     return (
       <div className="min-h-screen bg-background px-4 flex flex-col items-center justify-center gap-4">
         <User size={48} className="text-muted-foreground opacity-30" />
