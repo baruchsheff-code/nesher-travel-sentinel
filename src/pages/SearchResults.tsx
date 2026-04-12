@@ -292,7 +292,7 @@ const SearchResults = () => {
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
-  const [apiSource, setApiSource] = useState<"duffel" | "mock">("mock");
+  const [apiSource, setApiSource] = useState<"duffel" | "mock">("duffel");
   const [searchError, setSearchError] = useState(false);
 
   // Parse params
