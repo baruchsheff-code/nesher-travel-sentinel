@@ -1,84 +1,73 @@
 
 
-# Admin Dashboard Plan
+# Final Polish Pass — Nesher App
 
-## Overview
-Build a protected admin dashboard at `/admin` with live trip monitoring, support tickets, and escalation feeds. Uses a `user_roles` table for access control and an edge function for password verification.
+## 1. Consistent Branding (Bird icon + "Nesher" in top-left)
 
-## Security Architecture
+Currently, Index and Settings have the Bird icon. SearchResults, FlightDetail, and MyTrips use a back arrow without the brand. Will add a shared `NesherHeader` component with the Bird icon + "Nesher" text, back arrow (when not on home), and optional right-side actions. Apply it to all screens.
 
-1. **Database: `user_roles` table** — stores admin role per user (not on profiles table, per security rules)
-2. **`has_role` security definer function** — prevents RLS recursion
-3. **Edge function `admin-verify`** — validates password against `ADMIN_PASSWORD` secret and checks user role
-4. **Client-side**: route only renders after both password check and role verification pass
+**Files**: New `src/components/NesherHeader.tsx`, update `Index.tsx`, `SearchResults.tsx`, `FlightDetail.tsx`, `MyTrips.tsx`, `Settings.tsx`, `Business.tsx`
 
-## Database Migration
+## 2. Onboarding Tooltip Sequence
 
-```sql
--- Role enum and user_roles table
-CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+Create an `OnboardingTooltips` component that shows 3 sequential tooltips for first-time visitors (tracked via `localStorage`):
+- Tooltip 1: anchored to search bar — "Search in plain English — try 'flights to Israel next week'"
+- Tooltip 2: shown after first search on results page, anchored to first flight card — "We check live safety conditions for every destination automatically"
+- Tooltip 3: shown after first search if not logged in — "Create a free account to save this search and get price alerts"
 
-CREATE TABLE public.user_roles (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  role app_role NOT NULL,
-  UNIQUE (user_id, role)
-);
+Each tooltip is a positioned overlay with a dismiss button and step indicator (1/3, 2/3, 3/3). Uses `localStorage` key `nesher_onboarding_done`.
 
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+**Files**: New `src/components/OnboardingTooltips.tsx`, update `Index.tsx` and `SearchResults.tsx`
 
--- Security definer function
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = _user_id AND role = _role
-  )
-$$;
+## 3. 375px Mobile Responsiveness
 
--- Only admins can view roles
-CREATE POLICY "Admins can view roles"
-  ON public.user_roles FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-```
+Audit and fix all screens for iPhone SE (375px):
+- Ensure no horizontal overflow on any screen
+- Shrink font sizes and padding where needed on small screens
+- Use `text-xs` / smaller gaps in tight areas
+- Test bottom nav spacing, search bar, trip cards, settings form
+- Add `min-w-0` and `truncate` where text could overflow
 
-## Secret
-- Add `ADMIN_PASSWORD` secret via `add_secret` tool
+**Files**: Minor tweaks across `Index.tsx`, `SearchResults.tsx`, `MyTrips.tsx`, `Settings.tsx`, `BottomNav.tsx`, `FlightDetail.tsx`
 
-## Edge Function: `admin-verify`
-- Accepts POST with `{ password }` + auth header
-- Checks password against `ADMIN_PASSWORD` env var
-- Checks `user_roles` table for admin role
-- Returns `{ authorized: true/false }`
+## 4. Enhanced Settings Screen
 
-## New Files
+The current Settings already has Profile, Notifications, Flight Preferences, Smart Features, and Subscription sections. Will add:
+- **My Cards** section: display cards from `user_wallet` table (card name, issuer, transfer partners). Add/remove cards UI.
+- **Auto Recovery** section: mandate toggle + ceiling slider using `user_mandates` table data. Show max auto-charge amount with a slider ($100-$2000).
+- **Privacy Center** section: data sharing toggles (analytics, location, marketing) + "Delete Account" button with confirmation dialog.
 
-### `src/pages/Admin.tsx`
-Main admin dashboard with:
-- **Password gate**: modal prompting for password on first load, verified via edge function
-- **Top stats bar**: Active trips, open tickets, monitored flights, disruptions today (from mock data, queried from DB tables)
-- **Live trips table**: Color-coded rows (green/amber/red), risk badges, action buttons (View Chat, Take Over, Rebook, Call)
-- **Support tickets panel**: Right sidebar, sorted by priority, with quick reply and agent assignment
-- **Auto-escalation feed**: Live scrolling log of AI escalation events
-- **Auto-refresh**: `setInterval` every 60s to re-fetch data
-- **Red pulsing dot**: CSS animation on "Active" indicator when emergency tickets exist
+**Files**: Update `src/pages/Settings.tsx`
 
-### `src/App.tsx`
-- Add `/admin` route pointing to `Admin` page
+## 5. Empty States
 
-## Data Strategy
-All dashboard data uses mock data (as established by project convention) with the DB table structures for realistic column names. Queries will read from `bookings`, `booking_legs`, `support_tickets`, `destination_safety`, and `user_profiles` tables where data exists, falling back to mock data for display.
+Add friendly empty states with illustrations/icons:
+- **MyTrips**: "Your next adventure starts here" + search button (when no bookings)
+- **PriceWatchDashboard**: "Watch a fare to get alerted when prices drop" (when no watches)
+- **Support tickets** (in admin or future support page): "All clear — no open issues"
 
-## UI Design
-- Dark theme consistent with app (`#0A0F1E` bg, `#1A2332` cards)
-- Desktop-optimized layout (no bottom nav)
-- Left: main table area. Right: support tickets panel
-- Gold accent for emergency indicators, red pulsing dot animation
+**Files**: Update `src/pages/MyTrips.tsx`, `src/components/PriceWatchDashboard.tsx`
+
+## 6. Nesher Loading Screen
+
+Add a splash screen component that shows on app load:
+- Deep navy background (`#0A0F1E`)
+- Gold eagle wing icon (Bird from lucide, colored `#C9A84C`) that pulses once
+- "Nesher" text fades in below
+- After ~1.5s, the whole screen fades out to reveal the app
+
+Implemented as a wrapper in `App.tsx` with state-based visibility and CSS animations.
+
+**Files**: New `src/components/SplashScreen.tsx`, update `src/App.tsx`, add keyframes to `src/index.css`
+
+---
 
 ## Technical Details
-- Row color logic: green = on-time + normal, amber = delayed OR self-transfer OR safety_score < 6, red = cancelled OR crisis OR emergency ticket
-- Risk badges: Normal (green), Self-Transfer (amber), Crisis Route (red), Emergency (red pulse)
-- No bottom nav on admin page
+
+- `NesherHeader` props: `showBack?: boolean`, `title?: string`, `rightContent?: ReactNode`
+- Onboarding uses `localStorage` for persistence, no database needed
+- Privacy toggles are local-only (no backend table needed, stored in localStorage)
+- Delete account calls `supabase.auth.admin.deleteUser` or marks profile for deletion
+- Splash screen uses `useState` + `setTimeout` + CSS opacity/transform transitions
+- All new CSS animations added to `src/index.css`
 
