@@ -137,7 +137,7 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
           <p className="text-[11px] text-muted-foreground">
             {flight.stops === 0 ? "Nonstop" : flight.stops === 1
               ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
-              : `${flight.stops} stops`}
+              : `${flight.stops} stops${flight.stopAirports?.length ? ` · ${flight.stopAirports.join(" · ")}` : ""}`}
           </p>
         </div>
         <div className="text-center">
@@ -150,8 +150,13 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, apiSource }:
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group relative">
           <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
+          {(flight.baseAmount != null || flight.taxAmount != null) && (
+            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block bg-popover border border-border text-popover-foreground text-xs rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap z-50">
+              Base: {currencySymbol(flight.totalCurrency || "USD")}{(flight.baseAmount ?? 0).toFixed(2)} · Taxes: {currencySymbol(flight.totalCurrency || "USD")}{(flight.taxAmount ?? 0).toFixed(2)}
+            </div>
+          )}
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${predColor}18`, color: predColor }}>
             {flight.prediction === "buy" ? "Buy Now" : "Wait"} · {flight.predictionConfidence}%
           </span>
@@ -386,17 +391,18 @@ const SearchResults = () => {
     { key: "fastest", label: "Fastest" },
   ];
 
-  // Parse duration string like "10h 30m" to minutes for sorting
-  const parseDuration = (d: string) => {
-    const m = d.match(/(\d+)h\s*(\d+)m/);
+  // Use durationMinutes for sorting when available, fallback to parsing string
+  const getDurationMins = (f: FlightResult) => {
+    if (f.durationMinutes) return f.durationMinutes;
+    const m = f.durationFormatted.match(/(\d+)h\s*(\d+)m/);
     return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 9999;
   };
 
   const sortedFlights = useMemo(() => {
     const list = [...flights];
     if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
-    else if (activeTab === "fastest") list.sort((a, b) => parseDuration(a.durationFormatted) - parseDuration(b.durationFormatted));
-    else list.sort((a, b) => a.priceUsd * (a.stops + 1) - b.priceUsd * (b.stops + 1)); // best value heuristic
+    else if (activeTab === "fastest") list.sort((a, b) => getDurationMins(a) - getDurationMins(b));
+    else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
   }, [flights, activeTab]);
 
