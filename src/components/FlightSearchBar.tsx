@@ -300,11 +300,11 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
 
       {/* Row 2: Origin / Destination */}
       <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-3">
-        <AirportInput label="From" value={origin} onChange={setOrigin} placeholder="City or airport" />
+        <AirportInput label="From" value={origin} onChange={(d) => { setOrigin(d); setErrors(e => ({ ...e, origin: false })); }} placeholder="City or airport" hasError={errors.origin} />
         <button onClick={swap} className="swap-btn self-center shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted/50 transition-all duration-200 bg-card text-muted-foreground hover:text-primary">
           <ArrowRightLeft size={16} />
         </button>
-        <AirportInput label="To" value={destination} onChange={setDestination} placeholder="City or airport" />
+        <AirportInput label="To" value={destination} onChange={(d) => { setDestination(d); setErrors(e => ({ ...e, destination: false })); }} placeholder="City or airport" hasError={errors.destination} />
       </div>
 
       {/* Row 2b: Date + Travelers */}
@@ -314,7 +314,10 @@ export default function FlightSearchBar({ onSearch, initialParams, compact }: Pr
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">Depart</label>
           <button
             onClick={() => { setCalendarFor("depart"); setShowCalendar(!showCalendar); }}
-            className="input-gold-focus w-full flex items-center gap-2 bg-input border border-border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150"
+            className={cn(
+              "input-gold-focus w-full flex items-center gap-2 bg-input border rounded-2xl px-3 text-left hover:border-primary/40 transition-all duration-150",
+              errors.departDate ? "border-destructive ring-1 ring-destructive/30" : "border-border"
+            )}
             style={{ height: 56 }}
           >
             <CalendarDays size={14} className="text-muted-foreground" />
