@@ -31,17 +31,16 @@ const Index = () => {
 
         {/* Search Bar */}
         <div className="w-full mt-8 animate-fade-in-delay-2">
-          <div
-            className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4"
-            style={{ border: "1px solid hsl(var(--border))" }}
-          >
-            <Search className="text-primary shrink-0" size={22} />
-            <input
-              type="text"
-              placeholder="Where do you want to go?"
-              className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none"
-              style={{ fontSize: 16, fontFamily: "Inter, sans-serif" }}
-            />
+          <div className="relative rounded-2xl p-[2px] gemini-glow">
+            <div className="flex items-center gap-3 w-full bg-card rounded-2xl px-4 py-4 relative z-10">
+              <Search className="text-primary shrink-0" size={22} />
+              <input
+                type="text"
+                placeholder="Where do you want to go?"
+                className="bg-transparent text-foreground placeholder:text-muted-foreground w-full outline-none"
+                style={{ fontSize: 16, fontFamily: "Inter, sans-serif" }}
+              />
+            </div>
           </div>
         </div>
 
