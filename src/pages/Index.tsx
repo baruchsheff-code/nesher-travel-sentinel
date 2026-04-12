@@ -1,4 +1,5 @@
 import { Search, MessageCircle, Bird, Loader2, User, LogOut, Briefcase } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +71,8 @@ const Index = () => {
           </span>
         </div>
         {user ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <NotificationBell />
             <button onClick={() => navigate("/my-trips")} className="p-2 rounded-full hover:bg-card transition-colors" aria-label="My Trips">
               <Briefcase size={18} className="text-muted-foreground" />
             </button>
