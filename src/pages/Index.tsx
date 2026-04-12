@@ -1,21 +1,22 @@
-import { Search, MessageCircle, Bird, Loader2 } from "lucide-react";
+import { Search, MessageCircle, Bird, Loader2, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { parseDestination } from "@/lib/destinations";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const Index = () => {
   const [query, setQuery] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
 
-    // Simple queries (single destination word) skip AI
     const directMatch = parseDestination(trimmed);
     const isSimple = trimmed.split(/\s+/).length <= 2 && directMatch;
 
@@ -24,7 +25,6 @@ const Index = () => {
       return;
     }
 
-    // Natural language → AI parsing
     setIsParsing(true);
     try {
       const { data, error } = await supabase.functions.invoke("parse-search", {
@@ -41,7 +41,6 @@ const Index = () => {
         if (data.mentioned_card) params.set("card", data.mentioned_card);
         navigate(`/search?${params.toString()}`);
       } else {
-        // Fallback to direct search
         navigate(`/search?q=${encodeURIComponent(trimmed)}`);
       }
     } catch (err) {
@@ -53,16 +52,38 @@ const Index = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col px-4 relative">
-      {/* Logo */}
-      <div className="pt-6 animate-fade-in">
+      {/* Top bar */}
+      <div className="pt-6 flex items-center justify-between animate-fade-in">
         <div className="flex items-center gap-2">
           <Bird className="text-primary" size={28} strokeWidth={2.5} />
           <span className="text-primary font-bold" style={{ fontSize: 32 }}>
             Nesher
           </span>
         </div>
+        {user ? (
+          <div className="flex items-center gap-2">
+            <div className="rounded-full flex items-center justify-center" style={{ width: 36, height: 36, backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+              <User size={16} className="text-muted-foreground" />
+            </div>
+            <button onClick={handleSignOut} className="p-2 rounded-full hover:bg-card transition-colors">
+              <LogOut size={16} className="text-muted-foreground" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate("/auth")}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground"
+          >
+            Sign In
+          </button>
+        )}
       </div>
 
       {/* Hero */}
