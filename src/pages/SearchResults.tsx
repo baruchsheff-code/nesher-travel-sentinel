@@ -335,7 +335,7 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
             <div className="flex-1 h-px bg-border" />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            {flight.stops === 0 ? "Nonstop" : flight.stops === 1
+            {flight.stops === 0 ? <span style={{ color: "#22C55E" }}>Nonstop</span> : flight.stops === 1
               ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
               : `${flight.stops} stops${flight.stopAirports?.length ? ` · ${flight.stopAirports.join(" · ")}` : ""}`}
           </p>
@@ -421,6 +421,12 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
           <div className="flex items-center gap-2">
             <Shield size={13} style={{ color: "#22C55E" }} />
             <span className="text-xs" style={{ color: "#22C55E" }}>Resilient carrier</span>
+          </div>
+        )}
+        {flight.emissionsKg != null && (
+          <div className="flex items-center gap-2">
+            <Globe size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{flight.emissionsKg} kg CO₂</span>
           </div>
         )}
       </div>
