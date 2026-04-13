@@ -590,8 +590,18 @@ const SearchResults = () => {
       setSearchError(true);
       setFlights([]);
       setLoading(false);
+      setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata || "?", destination: destination?.iata || "?" });
       return;
     }
+
+    const searchParams = {
+      origin: originIata,
+      destination: destination.iata,
+      departure_date: dateStr,
+      cabin_class: cabinClass,
+      adults: adultsParam,
+    };
+    console.log("[DEBUG] Search params:", searchParams);
 
     try {
       const [flightResult, safetyResult] = await Promise.all([
@@ -619,30 +629,42 @@ const SearchResults = () => {
       }
 
       const { data, error } = flightResult;
+      console.log("[DEBUG] Duffel response data:", data);
+      console.log("[DEBUG] Duffel response error:", error);
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
+      console.log("[DEBUG] Offers array:", offers);
+      console.log("[DEBUG] Offers count:", Array.isArray(offers) ? offers.length : "not an array");
+
       const score = sd?.safety_score ?? 8;
       if (Array.isArray(offers) && offers.length > 0) {
         const transformed = offers
-          .map((o: any, i: number) => transformDuffelOffer(o, i, score))
+          .map((o: any, i: number) => {
+            console.log(`[DEBUG] Mapping offer ${i}:`, o);
+            return transformDuffelOffer(o, i, score);
+          })
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
+        setDebugInfo({ source: "LIVE", offersReceived: offers.length, origin: originIata, destination: destination.iata });
 
-        // Check skiplag history for airlines with connecting flights
         const connectingAirlines = [...new Set(transformed.filter(f => f.stops > 0).map(f => f.airlineCode))];
         if (connectingAirlines.length > 0) {
           checkSkiplagHistory(connectingAirlines);
         }
       } else {
+        console.log("[DEBUG] No offers found, falling back to error state");
         setSearchError(true);
         setFlights([]);
+        setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination.iata });
       }
     } catch (err) {
-      console.error("Search error:", err);
+      console.error("[DEBUG] Search error:", err);
       setSearchError(true);
       setFlights([]);
+      setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination?.iata || "?" });
     } finally {
       setLoading(false);
     }
