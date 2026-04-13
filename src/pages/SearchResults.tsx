@@ -1,5 +1,5 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw, Cloud, Wind, Droplets, Thermometer } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw, Cloud, Wind, Droplets, Thermometer, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseDestination, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { type FlightResult } from "@/lib/mockFlights";
@@ -9,6 +9,7 @@ import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 type SortMode = "best" | "cheapest" | "fastest";
@@ -183,16 +184,66 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean }) => {
-  const [expanded, setExpanded] = useState(false);
+const SkiplagWarningModal = ({ onAccept, onCancel }: { onAccept: () => void; onCancel: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCancel}>
+    <div className="bg-card rounded-2xl max-w-md w-full p-6 border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-foreground">Understanding Hidden-City Fares</h3>
+        <button onClick={onCancel}><X size={20} className="text-muted-foreground" /></button>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        A hidden-city fare means booking a flight with a connection, then leaving the airport at your connection city — not flying the final leg.
+      </p>
+      <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
+        <p className="text-xs font-semibold mb-2" style={{ color: "#FBBF24" }}>⚠️ Rules you MUST follow:</p>
+        <ul className="space-y-1.5 text-xs text-muted-foreground">
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Carry-on bags only — checked bags go to the final destination</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />One-way tickets only — return legs get cancelled if you skip</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Cannot be a frequent flyer booking</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Use sparingly — airlines track this</li>
+        </ul>
+      </div>
+      <p className="text-xs text-muted-foreground mb-5">
+        Nesher protects your account automatically. We hide these fares if you've used one on this airline in the last 6 months.
+      </p>
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 rounded-xl py-2.5 text-sm font-medium border border-border text-muted-foreground">Cancel</button>
+        <button onClick={onAccept} className="flex-1 rounded-xl py-2.5 text-sm font-semibold" style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}>I understand, show them</button>
+      </div>
+    </div>
+  </div>
+);
 
-  if (isHiddenBySkiplag && !expanded) {
-    return (
-      <button onClick={() => setExpanded(true)} className="w-full rounded-2xl px-4 py-3 flex items-center justify-between mb-3 bg-card border border-border">
-        <span className="text-xs text-muted-foreground">1 hidden-city fare hidden — protecting your {flight.airlineName} account 🛡️</span>
-        <ChevronDown size={14} className="text-muted-foreground" />
+interface SkiplagProtection {
+  airlineCode: string;
+  daysAgo: number;
+  availableIn: number;
+}
+
+const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; protection: SkiplagProtection }) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mb-3">
+      <button onClick={() => setExpanded(!expanded)} className="w-full rounded-2xl px-4 py-3 flex items-center justify-between bg-card border border-border">
+        <span className="text-xs text-muted-foreground">🛡️ 1 hidden-city fare hidden — protecting your {flight.airlineName} account</span>
+        <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", expanded && "rotate-180")} />
       </button>
-    );
+      {expanded && (
+        <div className="mt-1 rounded-2xl px-4 py-3 bg-card border border-border">
+          <p className="text-xs text-muted-foreground">
+            You used a hidden-city fare on <span className="font-semibold text-foreground">{flight.airlineName}</span> {protection.daysAgo} days ago. We've hidden this fare to protect your frequent flyer account from being flagged.
+          </p>
+          <p className="text-xs mt-1.5 font-medium" style={{ color: "#FBBF24" }}>Available again in {protection.availableIn} days.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+  // If this flight is skiplag-protected, show the protected card
+  if (flight.isSkiplag && skiplagProtection) {
+    return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
   }
 
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
@@ -282,6 +333,12 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }
         </div>
       )}
 
+      {flight.isSkiplag && !skiplagProtection && (
+        <div className="mb-2 rounded-xl px-3 py-1.5" style={{ backgroundColor: "rgba(251, 191, 36, 0.08)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
+          <p className="text-[11px] font-medium" style={{ color: "#FBBF24" }}>🧳 Carry-on only · Read the rules before booking</p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <CreditCard size={13} className="text-muted-foreground" />
@@ -298,12 +355,6 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }
           </div>
         )}
       </div>
-
-      {isHiddenBySkiplag && expanded && (
-        <div className="mt-3 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
-          <p className="text-xs" style={{ color: "#FBBF24" }}>⚠️ Hidden-city ticketing on {flight.airlineName} may risk your frequent flyer account.</p>
-        </div>
-      )}
     </div>
   );
 };
@@ -389,6 +440,7 @@ function transformDuffelOffer(offer: any, index: number, safetyScore: number): F
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SortMode>("best");
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -396,6 +448,11 @@ const SearchResults = () => {
   const [flights, setFlights] = useState<FlightResult[]>([]);
   const [searchError, setSearchError] = useState(false);
   const [safetyData, setSafetyData] = useState<SafetyData | null>(null);
+
+  // Skiplag state
+  const [showSkiplags, setShowSkiplags] = useState(false);
+  const [skiplagModalOpen, setSkiplagModalOpen] = useState(false);
+  const [skiplagProtections, setSkiplagProtections] = useState<Record<string, SkiplagProtection>>({});
 
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
@@ -412,6 +469,40 @@ const SearchResults = () => {
     if (destIata) return findDestByIata(destIata) || { iata: destIata, city: destCity, country: destCountry, flag: destFlag, airport: "" };
     return parseDestination(legacyQuery);
   }, [destIata, destCity, destCountry, destFlag, legacyQuery]);
+
+  // Check skiplag history for a set of airline codes
+  const checkSkiplagHistory = useCallback(async (airlineCodes: string[]) => {
+    if (!user?.id || airlineCodes.length === 0) return;
+    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const { data } = await supabase
+        .from("travel_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_skiplag", true)
+        .gte("travel_date", sixMonthsAgo)
+        .in("airline_code", airlineCodes);
+
+      if (data && data.length > 0) {
+        const protections: Record<string, SkiplagProtection> = {};
+        for (const log of data) {
+          const travelDate = new Date(log.travel_date!);
+          const daysAgo = Math.floor((Date.now() - travelDate.getTime()) / (1000 * 60 * 60 * 24));
+          const availableIn = 180 - daysAgo;
+          if (availableIn > 0 && log.airline_code) {
+            protections[log.airline_code] = {
+              airlineCode: log.airline_code,
+              daysAgo,
+              availableIn,
+            };
+          }
+        }
+        setSkiplagProtections(protections);
+      }
+    } catch (err) {
+      console.error("Skiplag history check failed:", err);
+    }
+  }, [user?.id]);
 
   // Fetch flights AND safety data in parallel
   const fetchFlights = useCallback(async () => {
@@ -444,13 +535,11 @@ const SearchResults = () => {
         }),
       ]);
 
-      // Process safety data
       const sd = safetyResult.data;
       if (sd?.success) {
         setSafetyData(sd as SafetyData);
       }
 
-      // Process flight data
       const { data, error } = flightResult;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -462,6 +551,12 @@ const SearchResults = () => {
           .map((o: any, i: number) => transformDuffelOffer(o, i, score))
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
+
+        // Check skiplag history for airlines with connecting flights
+        const connectingAirlines = [...new Set(transformed.filter(f => f.stops > 0).map(f => f.airlineCode))];
+        if (connectingAirlines.length > 0) {
+          checkSkiplagHistory(connectingAirlines);
+        }
       } else {
         setSearchError(true);
         setFlights([]);
@@ -473,7 +568,7 @@ const SearchResults = () => {
     } finally {
       setLoading(false);
     }
-  }, [destination, originIata, dateStr, cabinClass, adultsParam]);
+  }, [destination, originIata, dateStr, cabinClass, adultsParam, checkSkiplagHistory]);
 
   useEffect(() => {
     setLoading(true);
@@ -501,7 +596,19 @@ const SearchResults = () => {
     setEditSearch(false);
   };
 
-  const recentAirlines = ["UA"];
+  const handleToggleSkiplags = () => {
+    if (!showSkiplags) {
+      setSkiplagModalOpen(true);
+    } else {
+      setShowSkiplags(false);
+    }
+  };
+
+  const handleAcceptSkiplags = () => {
+    setSkiplagModalOpen(false);
+    setShowSkiplags(true);
+  };
+
   const tabs: { key: SortMode; label: string }[] = [
     { key: "best", label: "Best Value" },
     { key: "cheapest", label: "Cheapest" },
@@ -514,14 +621,23 @@ const SearchResults = () => {
     return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : 9999;
   };
 
+  // Mark connecting flights as potential skiplagged when toggle is on
+  const processedFlights = useMemo(() => {
+    return flights.map(f => ({
+      ...f,
+      isSkiplag: showSkiplags && f.stops > 0,
+    }));
+  }, [flights, showSkiplags]);
+
   const sortedFlights = useMemo(() => {
-    const list = [...flights];
+    const list = [...processedFlights];
     if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
     else if (activeTab === "fastest") list.sort((a, b) => getDurationMins(a) - getDurationMins(b));
     else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
-  }, [flights, activeTab]);
+  }, [processedFlights, activeTab]);
 
+  const hasConnectingFlights = flights.some(f => f.stops > 0);
   const isCriticalDestination = safetyData?.alert_level === "critical";
 
   if (loading) return <SearchLoadingScreen />;
@@ -561,6 +677,14 @@ const SearchResults = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8 animate-fade-in">
+      {/* Skiplag warning modal */}
+      {skiplagModalOpen && (
+        <SkiplagWarningModal
+          onAccept={handleAcceptSkiplags}
+          onCancel={() => setSkiplagModalOpen(false)}
+        />
+      )}
+
       {/* Condensed search header */}
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background border-b border-border">
         <div className="flex items-center gap-3">
@@ -613,37 +737,61 @@ const SearchResults = () => {
       {/* Weather widget */}
       {safetyData?.weather && <WeatherWidget weather={safetyData.weather} city={destination.city} />}
 
-      <div className="flex gap-2 px-4 mb-4">
-        {tabs.map((tab) => (
+      {/* Skiplag toggle + sort pills */}
+      <div className="flex items-center justify-between px-4 mb-4">
+        <div className="flex gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200"
+              style={
+                activeTab === tab.key
+                  ? { backgroundColor: "hsl(var(--foreground))", color: "hsl(var(--background))" }
+                  : { color: "hsl(var(--muted-foreground))" }
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {hasConnectingFlights && (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200"
-            style={
-              activeTab === tab.key
-                ? { backgroundColor: "hsl(var(--foreground))", color: "hsl(var(--background))" }
-                : { color: "hsl(var(--muted-foreground))" }
-            }
+            onClick={handleToggleSkiplags}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all border",
+              showSkiplags
+                ? "border-amber-500/40 text-amber-400"
+                : "border-border text-muted-foreground"
+            )}
+            style={showSkiplags ? { backgroundColor: "rgba(251, 191, 36, 0.1)" } : {}}
           >
-            {tab.label}
+            <Zap size={12} />
+            Hidden-city fares
+            <div className={cn(
+              "w-7 h-4 rounded-full relative transition-colors",
+              showSkiplags ? "bg-amber-500" : "bg-muted"
+            )}>
+              <div className={cn(
+                "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
+                showSkiplags ? "translate-x-3.5" : "translate-x-0.5"
+              )} />
+            </div>
           </button>
-        ))}
+        )}
       </div>
 
       <div className="px-4">
-        {sortedFlights.map((flight) => {
-          const isHiddenBySkiplag = flight.isSkiplag && recentAirlines.includes(flight.airlineCode);
-          return (
-            <FlightCard
-              key={flight.id}
-              flight={flight}
-              isHiddenBySkiplag={isHiddenBySkiplag}
-              onSelect={() => handleSelectFlight(flight)}
-              onWatch={() => setWatchFlight(flight)}
-              isCritical={isCriticalDestination}
-            />
-          );
-        })}
+        {sortedFlights.map((flight) => (
+          <FlightCard
+            key={flight.id}
+            flight={flight}
+            onSelect={() => handleSelectFlight(flight)}
+            onWatch={() => setWatchFlight(flight)}
+            isCritical={isCriticalDestination}
+            skiplagProtection={flight.isSkiplag ? (skiplagProtections[flight.airlineCode] || null) : undefined}
+          />
+        ))}
       </div>
 
       {watchFlight && destination && (
