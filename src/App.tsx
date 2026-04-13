@@ -7,13 +7,15 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { FlightProvider } from "@/contexts/FlightContext";
+import { FlightSearchProvider } from "@/contexts/FlightSearchContext";
 import OfflineBanner from "@/components/OfflineBanner";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useCallback } from "react";
 import Index from "./pages/Index.tsx";
 import SearchResults from "./pages/SearchResults.tsx";
-import FlightDetail from "./pages/FlightDetail.tsx";
+import SelectReturn from "./pages/SelectReturn.tsx";
+import TripReview from "./pages/TripReview.tsx";
+import AddOns from "./pages/AddOns.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import MyTrips from "./pages/MyTrips.tsx";
@@ -39,12 +41,14 @@ const App = () => {
           <AuthProvider>
             <NotificationProvider>
             <OfflineProvider>
-            <FlightProvider>
+            <FlightSearchProvider>
             <OfflineBanner />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/search" element={<SearchResults />} />
-              <Route path="/flight-detail" element={<FlightDetail />} />
+              <Route path="/select-return" element={<SelectReturn />} />
+              <Route path="/trip-review" element={<TripReview />} />
+              <Route path="/add-ons" element={<AddOns />} />
               <Route path="/my-trips" element={<MyTrips />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/support" element={<Settings />} />
@@ -55,7 +59,7 @@ const App = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </FlightProvider>
+            </FlightSearchProvider>
             </OfflineProvider>
             </NotificationProvider>
           </AuthProvider>
