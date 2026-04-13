@@ -632,6 +632,7 @@ const SearchResults = () => {
     { key: "best", label: "Best Value" },
     { key: "cheapest", label: "Cheapest" },
     { key: "fastest", label: "Fastest" },
+    { key: "crisis", label: "Crisis-Safe" },
   ];
 
   const getDurationMins = (f: FlightResult) => {
@@ -645,16 +646,22 @@ const SearchResults = () => {
     return flights.map(f => ({
       ...f,
       isSkiplag: showSkiplags && f.stops > 0,
+      isResilientCarrier: resilientCodes.includes(f.airlineCode),
     }));
-  }, [flights, showSkiplags]);
+  }, [flights, showSkiplags, resilientCodes]);
+
+  const crisisSafeFlights = useMemo(() => {
+    return processedFlights.filter(f => resilientCodes.includes(f.airlineCode));
+  }, [processedFlights, resilientCodes]);
 
   const sortedFlights = useMemo(() => {
-    const list = [...processedFlights];
+    const base = activeTab === "crisis" ? crisisSafeFlights : processedFlights;
+    const list = [...base];
     if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
     else if (activeTab === "fastest") list.sort((a, b) => getDurationMins(a) - getDurationMins(b));
     else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
-  }, [processedFlights, activeTab]);
+  }, [processedFlights, crisisSafeFlights, activeTab]);
 
   const hasConnectingFlights = flights.some(f => f.stops > 0);
   const isCriticalDestination = safetyData?.alert_level === "critical";
