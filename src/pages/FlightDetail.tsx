@@ -94,12 +94,22 @@ const FlightDetail = () => {
   const hasCardMandate = false;
 
   if (!flight) {
+    return null; // Will redirect via useEffect
+  }
+
+  if (expired) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-foreground">Flight not found</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-sm font-medium underline text-primary">
-            Go back
+        <div className="text-center space-y-4">
+          <AlertTriangle size={40} className="text-destructive mx-auto" />
+          <p className="text-lg font-semibold text-foreground">This fare has expired.</p>
+          <p className="text-sm text-muted-foreground">Search again for current prices.</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-2 px-6 py-2.5 rounded-2xl text-sm font-semibold"
+            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+          >
+            Search again
           </button>
         </div>
       </div>
