@@ -639,7 +639,6 @@ const SearchResults = () => {
           .map((o: any, i: number) => transformDuffelOffer(o, i, score))
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         console.log('Search complete:', offers.length, 'offers received');
-          .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
         setDebugInfo({ source: "LIVE", offersReceived: offers.length, origin: originIata, destination: destination.iata });
 
