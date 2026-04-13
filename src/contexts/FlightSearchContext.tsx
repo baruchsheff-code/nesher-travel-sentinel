@@ -72,11 +72,19 @@ const FlightSearchContext = createContext<FlightSearchContextType>({
 });
 
 export const FlightSearchProvider = ({ children }: { children: ReactNode }) => {
-  const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
+  const [searchParams, setSearchParamsRaw] = useState<SearchParams | null>(null);
   const [outboundOffer, setOutboundOffer] = useState<DuffelOffer | null>(null);
   const [returnOffer, setReturnOffer] = useState<DuffelOffer | null>(null);
   const [allOutboundOffers, setAllOutboundOffers] = useState<DuffelOffer[]>([]);
   const [allReturnOffers, setAllReturnOffers] = useState<DuffelOffer[]>([]);
+
+  const setSearchParams = (p: SearchParams | null) => {
+    setSearchParamsRaw(p);
+    if (p && p.tripType === 'one_way') {
+      setReturnOffer(null);
+      setAllReturnOffers([]);
+    }
+  };
 
   return (
     <FlightSearchContext.Provider value={{
