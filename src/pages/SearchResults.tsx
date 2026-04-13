@@ -277,12 +277,16 @@ const PointsBreakdown = ({ cardPoints, bestCard }: { cardPoints: CardPoints[]; b
 );
 
 const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection, userCards }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null; userCards?: { card_name: string; points_multiplier: Record<string, number> }[] }) => {
+  const [showPointsBreakdown, setShowPointsBreakdown] = useState(false);
+
   // If this flight is skiplag-protected, show the protected card
   if (flight.isSkiplag && skiplagProtection) {
     return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
   }
 
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
+  const cardPoints = userCards && userCards.length > 0 ? calcCardPoints(flight.priceUsd, userCards) : [];
+  const bestCard = cardPoints.length > 0 ? cardPoints[0] : null;
 
   return (
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
