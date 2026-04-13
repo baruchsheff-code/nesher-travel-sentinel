@@ -118,9 +118,11 @@ const SearchResults = () => {
   }, [destination, originIata, dateStr, cabinClass, adultsParam, tripType, returnDateStr, originCity, setCtxParams, setAllOutboundOffers]);
 
   useEffect(() => {
+    if (searchKey === lastSearchKey) return;
+    setLastSearchKey(searchKey);
     setLoading(true);
     fetchFlights();
-  }, [fetchFlights]);
+  }, [searchKey, lastSearchKey, fetchFlights]);
 
   const handleSelectFlight = (offer: DuffelOffer) => {
     setOutboundOffer(offer);
