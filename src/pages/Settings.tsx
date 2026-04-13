@@ -15,7 +15,18 @@ interface WalletCard {
   card_name: string | null;
   card_issuer: string | null;
   transfer_partners: string[] | null;
+  points_multiplier: Record<string, number> | null;
 }
+
+const PRESET_CARDS = [
+  { card_name: "Amex Platinum", card_issuer: "American Express", points_multiplier: { travel: 5, other: 1 } },
+  { card_name: "Amex Gold", card_issuer: "American Express", points_multiplier: { dining: 4, flights: 3, other: 1 } },
+  { card_name: "Chase Sapphire Reserve", card_issuer: "Chase", points_multiplier: { travel: 3, other: 1 } },
+  { card_name: "Chase Sapphire Preferred", card_issuer: "Chase", points_multiplier: { travel: 2, other: 1 } },
+  { card_name: "Citi Premier", card_issuer: "Citi", points_multiplier: { travel: 3, other: 1 } },
+  { card_name: "Capital One Venture", card_issuer: "Capital One", points_multiplier: { everything: 2 } },
+  { card_name: "Discover it Miles", card_issuer: "Discover", points_multiplier: { everything: 1.5 } },
+] as const;
 
 const Settings = () => {
   const navigate = useNavigate();
