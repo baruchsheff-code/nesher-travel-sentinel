@@ -1,7 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw, Cloud, Wind, Droplets, Thermometer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseDestination, MOCK_SAFETY, type Destination, DESTINATION_MAP } from "@/lib/destinations";
+import { parseDestination, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { type FlightResult } from "@/lib/mockFlights";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import PriceWatchModal from "@/components/PriceWatchModal";
@@ -13,41 +13,142 @@ import { toast } from "sonner";
 
 type SortMode = "best" | "cheapest" | "fastest";
 
-const SafetyBanner = ({ iata, city }: { iata: string; city: string }) => {
-  const info = MOCK_SAFETY[iata];
-  if (!info || info.score >= 7) return null;
+interface SafetyData {
+  city: string;
+  country: string;
+  iata_code: string;
+  safety_score: number;
+  alert_level: "normal" | "advisory" | "warning" | "critical";
+  top_events: string[];
+  recommendation: string;
+  weather: {
+    temp_c: number;
+    temp_f: number;
+    description: string;
+    wind_speed_kmh: number;
+    humidity: number;
+    has_warning: boolean;
+    warning_text?: string;
+  };
+}
 
-  if (info.alertLevel === "advisory") {
+const LiveSafetyBanner = ({ safety, city }: { safety: SafetyData; city: string }) => {
+  if (safety.alert_level === "normal") {
     return (
-      <div className="mx-4 mb-4 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.25)" }}>
+      <div className="mx-4 mb-3 mt-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: "rgba(34, 197, 94, 0.12)", color: "#22C55E", border: "1px solid rgba(34, 197, 94, 0.25)" }}>
+          ✓ No travel advisories for {city}
+        </span>
+      </div>
+    );
+  }
+
+  if (safety.alert_level === "advisory") {
+    return (
+      <div className="mx-4 mb-3 mt-3 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.25)" }}>
         <AlertTriangle className="shrink-0 mt-0.5" size={18} style={{ color: "#FBBF24" }} />
         <div>
-          <p className="text-sm font-semibold" style={{ color: "#FBBF24" }}>Safety Advisory — {city}</p>
-          <p className="text-xs mt-1 text-muted-foreground">{info.eventSummary}</p>
+          <p className="text-sm font-semibold" style={{ color: "#FBBF24" }}>⚠️ Safety Advisory — {city}</p>
+          {safety.top_events.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {safety.top_events.map((e, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <span className="mt-1 shrink-0 w-1 h-1 rounded-full bg-amber-400" />
+                  {e}
+                </li>
+              ))}
+            </ul>
+          )}
           <button className="text-xs font-medium mt-2 underline" style={{ color: "#FBBF24" }}>View Crisis-Safe routes →</button>
         </div>
       </div>
     );
   }
 
+  if (safety.alert_level === "warning") {
+    return (
+      <div className="mx-4 mb-3 mt-3 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: "rgba(249, 115, 22, 0.12)", border: "1px solid rgba(249, 115, 22, 0.3)" }}>
+        <AlertTriangle className="shrink-0 mt-0.5" size={18} style={{ color: "#F97316" }} />
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "#F97316" }}>🚨 Travel Warning — {city}</p>
+          <p className="text-xs mt-1 text-muted-foreground">Exercise increased caution. Multiple incidents reported.</p>
+          {safety.top_events.length > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {safety.top_events.map((e, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <span className="mt-1 shrink-0 w-1 h-1 rounded-full bg-orange-400" />
+                  {e}
+                </li>
+              ))}
+            </ul>
+          )}
+          <button className="text-xs font-semibold mt-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#F97316", color: "#fff" }}>Show me safer routing options</button>
+        </div>
+      </div>
+    );
+  }
+
+  // critical
   return (
-    <div className="mx-4 mb-4 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+    <div className="mx-4 mb-3 mt-3 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ backgroundColor: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)" }}>
       <AlertTriangle className="shrink-0 mt-0.5" size={18} style={{ color: "#EF4444" }} />
       <div>
-        <p className="text-sm font-semibold" style={{ color: "#EF4444" }}>Critical Warning — {city}</p>
-        <p className="text-xs mt-1 text-muted-foreground">We strongly recommend Crisis-Safe routing for this destination.</p>
-        <button className="text-xs font-semibold mt-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: "#EF4444", color: "#fff" }}>View Crisis-Safe routes</button>
+        <p className="text-sm font-semibold" style={{ color: "#EF4444" }}>🔴 Critical Alert — {city}</p>
+        <p className="text-xs mt-1 text-muted-foreground">Most commercial carriers have reduced or suspended service.</p>
+        <p className="text-xs mt-0.5 text-muted-foreground">We strongly recommend resilient routing for this destination.</p>
+        {safety.top_events.length > 0 && (
+          <ul className="mt-1.5 space-y-1">
+            {safety.top_events.map((e, i) => (
+              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <span className="mt-1 shrink-0 w-1 h-1 rounded-full bg-red-400" />
+                {e}
+              </li>
+            ))}
+          </ul>
+        )}
+        <button className="text-xs font-semibold mt-2 px-4 py-2 rounded-lg" style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}>Build my crisis-safe route</button>
       </div>
     </div>
   );
 };
 
-const SafetyBadge = ({ score }: { score: number }) => {
-  const color = score >= 7 ? "#22C55E" : score >= 5 ? "#FBBF24" : "#EF4444";
+const WeatherWidget = ({ weather, city }: { weather: SafetyData["weather"]; city: string }) => {
   return (
-    <div className="flex items-center gap-1 rounded-full px-2 py-0.5" style={{ backgroundColor: `${color}20`, border: `1px solid ${color}40` }}>
-      <div className="rounded-full" style={{ width: 8, height: 8, backgroundColor: color }} />
+    <div className="mx-4 mb-4 rounded-2xl px-4 py-3 bg-card border border-border">
+      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+        <Cloud size={14} className="text-muted-foreground" />
+        {city} when you arrive
+      </p>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <Thermometer size={13} className="text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">{weather.temp_c}°C / {weather.temp_f}°F</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{weather.description}</span>
+        <div className="flex items-center gap-1">
+          <Wind size={12} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{weather.wind_speed_kmh} km/h</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Droplets size={12} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{weather.humidity}%</span>
+        </div>
+      </div>
+      {weather.has_warning && weather.warning_text && (
+        <p className="text-xs font-semibold mt-2" style={{ color: "#EF4444" }}>⛈️ {weather.warning_text}</p>
+      )}
+    </div>
+  );
+};
+
+const SafetyScoreBadge = ({ score }: { score: number }) => {
+  const color = score >= 8 ? "#22C55E" : score >= 5 ? "#FBBF24" : score >= 3 ? "#F97316" : "#EF4444";
+  return (
+    <div className="group relative flex items-center justify-center rounded-full w-7 h-7" style={{ backgroundColor: `${color}20`, border: `1.5px solid ${color}50` }}>
       <span className="text-xs font-bold" style={{ color }}>{score}</span>
+      <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-popover border border-border text-popover-foreground text-[10px] rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap z-50">
+        Destination safety score based on live news analysis
+      </div>
     </div>
   );
 };
@@ -82,7 +183,7 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void }) => {
+const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (isHiddenBySkiplag && !expanded) {
@@ -98,8 +199,8 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
 
   return (
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
-      <div className="absolute top-3 right-3 flex items-center gap-2">
-        <SafetyBadge score={flight.safetyScore} />
+      <div className="absolute top-3 right-3">
+        <SafetyScoreBadge score={flight.safetyScore} />
       </div>
 
       {flight.isSkiplag && (
@@ -175,6 +276,12 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch }: { flight: 
         </div>
       )}
 
+      {isCritical && (
+        <div className="mb-2 rounded-xl px-3 py-1.5" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+          <p className="text-[11px] font-medium" style={{ color: "#EF4444" }}>⚠️ This carrier may suspend service</p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <CreditCard size={13} className="text-muted-foreground" />
@@ -210,13 +317,12 @@ function findDestByIata(iata: string): Destination | null {
 }
 
 // Transform Duffel offer into FlightResult
-function transformDuffelOffer(offer: any, index: number): FlightResult {
+function transformDuffelOffer(offer: any, index: number, safetyScore: number): FlightResult {
   const slice = offer.slices?.[0];
   const segments = slice?.segments || [];
   const firstSeg = segments[0];
   const lastSeg = segments[segments.length - 1];
 
-  // Prefer offer.owner for airline info (more reliable than segment carrier)
   const owner = offer.owner || {};
   const airlineCode = owner.iata_code || firstSeg?.operating_carrier?.iata_code || firstSeg?.marketing_carrier?.iata_code || "??";
   const airlineName = owner.name || firstSeg?.operating_carrier?.name || "Unknown Airline";
@@ -227,11 +333,8 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
   const arrDate = lastSeg?.arriving_at ? new Date(lastSeg.arriving_at).getDate() : 0;
 
   const stops = Math.max(segments.length - 1, 0);
-
-  // Layover airport for 1-stop flights
   const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
 
-  // Duration from slice — handles PT12H44M and P1DT6H21M
   const durationIso = slice?.duration || "";
   const dayMatch = durationIso.match(/P(\d+)D/);
   const hourMatch = durationIso.match(/(\d+)H/);
@@ -247,7 +350,6 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
     : "—";
 
-  // Fare breakdown
   const baseAmount = offer.base_amount ? parseFloat(offer.base_amount) : null;
   const taxAmount = offer.tax_amount ? parseFloat(offer.tax_amount) : null;
 
@@ -275,7 +377,7 @@ function transformDuffelOffer(offer: any, index: number): FlightResult {
     pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
     pointsCard: "Your Card",
     visaInfo: "Check visa requirements",
-    safetyScore: 8,
+    safetyScore,
     isSkiplag: false,
     isSplitTicket: false,
     isResilientCarrier: false,
@@ -292,10 +394,9 @@ const SearchResults = () => {
   const [loading, setLoading] = useState(true);
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
-  const [apiSource, setApiSource] = useState<"duffel" | "mock">("duffel");
   const [searchError, setSearchError] = useState(false);
+  const [safetyData, setSafetyData] = useState<SafetyData | null>(null);
 
-  // Parse params
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
   const destCountry = searchParams.get("destCountry") || "";
@@ -306,16 +407,16 @@ const SearchResults = () => {
   const adultsParam = Number(searchParams.get("adults") || "1");
   const tripType = searchParams.get("tripType") || "one-way";
 
-  // Legacy support
   const legacyQuery = searchParams.get("q") || "";
   const destination = useMemo(() => {
     if (destIata) return findDestByIata(destIata) || { iata: destIata, city: destCity, country: destCountry, flag: destFlag, airport: "" };
     return parseDestination(legacyQuery);
   }, [destIata, destCity, destCountry, destFlag, legacyQuery]);
 
-  // Fetch flights from Duffel API via edge function
+  // Fetch flights AND safety data in parallel
   const fetchFlights = useCallback(async () => {
     setSearchError(false);
+    setSafetyData(null);
     if (!destination || !originIata || !dateStr) {
       setSearchError(true);
       setFlights([]);
@@ -324,32 +425,49 @@ const SearchResults = () => {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke("search-flights", {
-        body: {
-          origin: originIata,
-          destination: destination.iata,
-          departure_date: dateStr,
-          cabin_class: cabinClass,
-          adult_count: adultsParam,
-        },
-      });
+      const [flightResult, safetyResult] = await Promise.all([
+        supabase.functions.invoke("search-flights", {
+          body: {
+            origin: originIata,
+            destination: destination.iata,
+            departure_date: dateStr,
+            cabin_class: cabinClass,
+            adult_count: adultsParam,
+          },
+        }),
+        supabase.functions.invoke("check-destination-safety", {
+          body: {
+            city: destination.city,
+            country: destination.country,
+            iata_code: destination.iata,
+          },
+        }),
+      ]);
 
+      // Process safety data
+      const sd = safetyResult.data;
+      if (sd?.success) {
+        setSafetyData(sd as SafetyData);
+      }
+
+      // Process flight data
+      const { data, error } = flightResult;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
+      const score = sd?.safety_score ?? 8;
       if (Array.isArray(offers) && offers.length > 0) {
         const transformed = offers
-          .map((o: any, i: number) => transformDuffelOffer(o, i))
+          .map((o: any, i: number) => transformDuffelOffer(o, i, score))
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
-        setApiSource("duffel");
       } else {
         setSearchError(true);
         setFlights([]);
       }
     } catch (err) {
-      console.error("Duffel API error:", err);
+      console.error("Search error:", err);
       setSearchError(true);
       setFlights([]);
     } finally {
@@ -390,7 +508,6 @@ const SearchResults = () => {
     { key: "fastest", label: "Fastest" },
   ];
 
-  // Use durationMinutes for sorting when available, fallback to parsing string
   const getDurationMins = (f: FlightResult) => {
     if (f.durationMinutes) return f.durationMinutes;
     const m = f.durationFormatted.match(/(\d+)h\s*(\d+)m/);
@@ -404,6 +521,8 @@ const SearchResults = () => {
     else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
   }, [flights, activeTab]);
+
+  const isCriticalDestination = safetyData?.alert_level === "critical";
 
   if (loading) return <SearchLoadingScreen />;
 
@@ -488,9 +607,13 @@ const SearchResults = () => {
         </p>
       </div>
 
-      <SafetyBanner iata={destination.iata} city={destination.city} />
+      {/* Safety banner */}
+      {safetyData && <LiveSafetyBanner safety={safetyData} city={destination.city} />}
 
-      <div className="flex gap-2 px-4 mb-4 mt-4">
+      {/* Weather widget */}
+      {safetyData?.weather && <WeatherWidget weather={safetyData.weather} city={destination.city} />}
+
+      <div className="flex gap-2 px-4 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -517,6 +640,7 @@ const SearchResults = () => {
               isHiddenBySkiplag={isHiddenBySkiplag}
               onSelect={() => handleSelectFlight(flight)}
               onWatch={() => setWatchFlight(flight)}
+              isCritical={isCriticalDestination}
             />
           );
         })}
