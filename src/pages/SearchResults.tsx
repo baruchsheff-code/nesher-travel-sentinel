@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-type SortMode = "best" | "cheapest" | "fastest";
+type SortMode = "best" | "cheapest" | "fastest" | "crisis";
 
 interface SafetyData {
   city: string;
