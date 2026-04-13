@@ -5,7 +5,9 @@ export interface FlightResult {
   flightNumber: string;
   cabinClass: string;
   originIata: string;
+  originCity?: string;
   destinationIata: string;
+  destinationCity?: string;
   departureTime: string;
   arrivalTime: string;
   arrivesNextDay: boolean;
@@ -29,6 +31,7 @@ export interface FlightResult {
   layoverAirport?: string;
   stopAirports?: string[];
   expiresAt?: string;
+  emissionsKg?: number | null;
 }
 
 export function getMockFlightsForDestination(destinationIata: string): FlightResult[] {

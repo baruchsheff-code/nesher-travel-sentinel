@@ -436,73 +436,63 @@ function findDestByIata(iata: string): Destination | null {
   return null;
 }
 
-// Transform Duffel offer into FlightResult
+// Transform clean mapped offer from edge function into FlightResult
 function transformDuffelOffer(offer: any, index: number, safetyScore: number): FlightResult {
-  const slice = offer.slices?.[0];
-  const segments = slice?.segments || [];
-  const firstSeg = segments[0];
-  const lastSeg = segments[segments.length - 1];
+  const depTime = offer.departure_time
+    ? new Date(offer.departure_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : "00:00";
+  const arrTime = offer.arrival_time
+    ? new Date(offer.arrival_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : "00:00";
 
-  const owner = offer.owner || {};
-  const airlineCode = owner.iata_code || firstSeg?.operating_carrier?.iata_code || firstSeg?.marketing_carrier?.iata_code || "??";
-  const airlineName = owner.name || firstSeg?.operating_carrier?.name || "Unknown Airline";
+  const depDate = offer.departure_time ? new Date(offer.departure_time) : null;
+  const arrDate = offer.arrival_time ? new Date(offer.arrival_time) : null;
+  const dayDiff = depDate && arrDate ? Math.floor((arrDate.getTime() - depDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
-  const depTime = firstSeg?.departing_at ? format(new Date(firstSeg.departing_at), "HH:mm") : "00:00";
-  const arrTime = lastSeg?.arriving_at ? format(new Date(lastSeg.arriving_at), "HH:mm") : "00:00";
-  const depDate = firstSeg?.departing_at ? new Date(firstSeg.departing_at).getDate() : 0;
-  const arrDate = lastSeg?.arriving_at ? new Date(lastSeg.arriving_at).getDate() : 0;
-
-  const stops = Math.max(segments.length - 1, 0);
-  const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
-
-  const durationIso = slice?.duration || "";
-  const dayMatch = durationIso.match(/P(\d+)D/);
-  const hourMatch = durationIso.match(/(\d+)H/);
-  const minMatch = durationIso.match(/(\d+)M/);
+  // Parse duration for minutes
+  const durationRaw = offer.duration_raw || "";
+  const dayMatch = durationRaw.match(/P(\d+)D/);
+  const hourMatch = durationRaw.match(/(\d+)H/);
+  const minMatch = durationRaw.match(/(\d+)M/);
   const totalHours = (dayMatch ? parseInt(dayMatch[1]) * 24 : 0) + (hourMatch ? parseInt(hourMatch[1]) : 0);
   const totalMins = minMatch ? parseInt(minMatch[1]) : 0;
-  const durationFormatted = totalHours || totalMins ? `${totalHours}h ${totalMins}m` : "—";
   const durationMinutes = totalHours * 60 + totalMins;
 
-  const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
-
-  const flightNum = firstSeg?.marketing_carrier_flight_number
-    ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
-    : "—";
-
-  const baseAmount = offer.base_amount ? parseFloat(offer.base_amount) : null;
-  const taxAmount = offer.tax_amount ? parseFloat(offer.tax_amount) : null;
+  const priceUsd = parseFloat(offer.total_amount) || 0;
 
   return {
     id: offer.id || `duffel-${index}`,
-    airlineCode,
-    airlineName,
-    flightNumber: flightNum,
-    cabinClass: cabinMap[offer.cabin_class] || offer.cabin_class || "Economy",
-    originIata: firstSeg?.origin?.iata_code || slice?.origin?.iata_code || "???",
-    destinationIata: lastSeg?.destination?.iata_code || slice?.destination?.iata_code || "???",
+    airlineCode: offer.airline_code || "??",
+    airlineName: offer.airline_name || "Unknown Airline",
+    flightNumber: offer.flight_number ? `${offer.airline_code || ''}${offer.flight_number}` : "—",
+    cabinClass: offer.cabin_class || "Economy",
+    originIata: offer.origin_iata || "???",
+    originCity: offer.origin_city || "",
+    destinationIata: offer.destination_iata || "???",
+    destinationCity: offer.destination_city || "",
     departureTime: depTime,
     arrivalTime: arrTime,
-    arrivesNextDay: arrDate !== depDate,
-    durationFormatted,
+    arrivesNextDay: dayDiff > 0,
+    durationFormatted: offer.duration || "—",
     durationMinutes,
-    stops,
-    layoverAirport,
-    priceUsd: parseFloat(offer.total_amount) || 0,
+    stops: offer.stops ?? 0,
+    layoverAirport: offer.stops === 1 ? (offer.stop_airports?.[0] || "") : undefined,
+    stopAirports: offer.stop_airports || [],
+    priceUsd,
     totalCurrency: offer.total_currency || "USD",
-    baseAmount,
-    taxAmount,
-    prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
+    baseAmount: offer.base_amount ? parseFloat(offer.base_amount) : null,
+    taxAmount: offer.tax_amount ? parseFloat(offer.tax_amount) : null,
+    prediction: priceUsd < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
-    pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
+    pointsEarn: Math.floor(priceUsd * 3),
     pointsCard: "Your Card",
     visaInfo: "Check visa requirements",
     safetyScore,
     isSkiplag: false,
     isSplitTicket: false,
     isResilientCarrier: false,
-    stopAirports: segments.length > 1 ? segments.slice(0, -1).map((s: any) => s.destination?.iata_code || "") : [],
     expiresAt: offer.expires_at || undefined,
+    emissionsKg: offer.emissions_kg || null,
   };
 }
 
