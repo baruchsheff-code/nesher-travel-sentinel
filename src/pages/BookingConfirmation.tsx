@@ -4,7 +4,8 @@ import { useFlightSearch } from "@/contexts/FlightSearchContext";
 
 export default function BookingConfirmation() {
   const navigate = useNavigate();
-  const { outboundOffer, returnOffer } = useFlightSearch();
+  const { outboundOffer, returnOffer, searchParams } = useFlightSearch();
+  const tripType = searchParams?.tripType;
 
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -30,7 +31,7 @@ export default function BookingConfirmation() {
         </div>
       )}
 
-      {returnOffer && (
+      {tripType === 'round_trip' && returnOffer && (
         <div className="w-full max-w-sm rounded-2xl p-4 bg-card border border-border mb-6">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Return</p>
           <p className="text-sm font-semibold text-foreground">{returnOffer.airline_name}</p>
