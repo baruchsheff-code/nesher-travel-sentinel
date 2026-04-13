@@ -335,7 +335,7 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
             <div className="flex-1 h-px bg-border" />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            {flight.stops === 0 ? "Nonstop" : flight.stops === 1
+            {flight.stops === 0 ? <span style={{ color: "#22C55E" }}>Nonstop</span> : flight.stops === 1
               ? `1 stop${flight.stopAirports?.[0] ? ` · ${flight.stopAirports[0]}` : flight.layoverAirport ? ` · ${flight.layoverAirport}` : ""}`
               : `${flight.stops} stops${flight.stopAirports?.length ? ` · ${flight.stopAirports.join(" · ")}` : ""}`}
           </p>
@@ -423,6 +423,12 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
             <span className="text-xs" style={{ color: "#22C55E" }}>Resilient carrier</span>
           </div>
         )}
+        {flight.emissionsKg != null && (
+          <div className="flex items-center gap-2">
+            <Globe size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{flight.emissionsKg} kg CO₂</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -436,73 +442,63 @@ function findDestByIata(iata: string): Destination | null {
   return null;
 }
 
-// Transform Duffel offer into FlightResult
+// Transform clean mapped offer from edge function into FlightResult
 function transformDuffelOffer(offer: any, index: number, safetyScore: number): FlightResult {
-  const slice = offer.slices?.[0];
-  const segments = slice?.segments || [];
-  const firstSeg = segments[0];
-  const lastSeg = segments[segments.length - 1];
+  const depTime = offer.departure_time
+    ? new Date(offer.departure_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : "00:00";
+  const arrTime = offer.arrival_time
+    ? new Date(offer.arrival_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : "00:00";
 
-  const owner = offer.owner || {};
-  const airlineCode = owner.iata_code || firstSeg?.operating_carrier?.iata_code || firstSeg?.marketing_carrier?.iata_code || "??";
-  const airlineName = owner.name || firstSeg?.operating_carrier?.name || "Unknown Airline";
+  const depDate = offer.departure_time ? new Date(offer.departure_time) : null;
+  const arrDate = offer.arrival_time ? new Date(offer.arrival_time) : null;
+  const dayDiff = depDate && arrDate ? Math.floor((arrDate.getTime() - depDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
-  const depTime = firstSeg?.departing_at ? format(new Date(firstSeg.departing_at), "HH:mm") : "00:00";
-  const arrTime = lastSeg?.arriving_at ? format(new Date(lastSeg.arriving_at), "HH:mm") : "00:00";
-  const depDate = firstSeg?.departing_at ? new Date(firstSeg.departing_at).getDate() : 0;
-  const arrDate = lastSeg?.arriving_at ? new Date(lastSeg.arriving_at).getDate() : 0;
-
-  const stops = Math.max(segments.length - 1, 0);
-  const layoverAirport = stops === 1 ? (segments[0]?.destination?.iata_code || "") : undefined;
-
-  const durationIso = slice?.duration || "";
-  const dayMatch = durationIso.match(/P(\d+)D/);
-  const hourMatch = durationIso.match(/(\d+)H/);
-  const minMatch = durationIso.match(/(\d+)M/);
+  // Parse duration for minutes
+  const durationRaw = offer.duration_raw || "";
+  const dayMatch = durationRaw.match(/P(\d+)D/);
+  const hourMatch = durationRaw.match(/(\d+)H/);
+  const minMatch = durationRaw.match(/(\d+)M/);
   const totalHours = (dayMatch ? parseInt(dayMatch[1]) * 24 : 0) + (hourMatch ? parseInt(hourMatch[1]) : 0);
   const totalMins = minMatch ? parseInt(minMatch[1]) : 0;
-  const durationFormatted = totalHours || totalMins ? `${totalHours}h ${totalMins}m` : "—";
   const durationMinutes = totalHours * 60 + totalMins;
 
-  const cabinMap: Record<string, string> = { economy: "Economy", premium_economy: "Premium Eco", business: "Business", first: "First" };
-
-  const flightNum = firstSeg?.marketing_carrier_flight_number
-    ? `${firstSeg?.marketing_carrier?.iata_code || airlineCode}${firstSeg.marketing_carrier_flight_number}`
-    : "—";
-
-  const baseAmount = offer.base_amount ? parseFloat(offer.base_amount) : null;
-  const taxAmount = offer.tax_amount ? parseFloat(offer.tax_amount) : null;
+  const priceUsd = parseFloat(offer.total_amount) || 0;
 
   return {
     id: offer.id || `duffel-${index}`,
-    airlineCode,
-    airlineName,
-    flightNumber: flightNum,
-    cabinClass: cabinMap[offer.cabin_class] || offer.cabin_class || "Economy",
-    originIata: firstSeg?.origin?.iata_code || slice?.origin?.iata_code || "???",
-    destinationIata: lastSeg?.destination?.iata_code || slice?.destination?.iata_code || "???",
+    airlineCode: offer.airline_code || "??",
+    airlineName: offer.airline_name || "Unknown Airline",
+    flightNumber: offer.flight_number ? `${offer.airline_code || ''}${offer.flight_number}` : "—",
+    cabinClass: offer.cabin_class || "Economy",
+    originIata: offer.origin_iata || "???",
+    originCity: offer.origin_city || "",
+    destinationIata: offer.destination_iata || "???",
+    destinationCity: offer.destination_city || "",
     departureTime: depTime,
     arrivalTime: arrTime,
-    arrivesNextDay: arrDate !== depDate,
-    durationFormatted,
+    arrivesNextDay: dayDiff > 0,
+    durationFormatted: offer.duration || "—",
     durationMinutes,
-    stops,
-    layoverAirport,
-    priceUsd: parseFloat(offer.total_amount) || 0,
+    stops: offer.stops ?? 0,
+    layoverAirport: offer.stops === 1 ? (offer.stop_airports?.[0] || "") : undefined,
+    stopAirports: offer.stop_airports || [],
+    priceUsd,
     totalCurrency: offer.total_currency || "USD",
-    baseAmount,
-    taxAmount,
-    prediction: parseFloat(offer.total_amount) < 800 ? "buy" : "wait",
+    baseAmount: offer.base_amount ? parseFloat(offer.base_amount) : null,
+    taxAmount: offer.tax_amount ? parseFloat(offer.tax_amount) : null,
+    prediction: priceUsd < 800 ? "buy" : "wait",
     predictionConfidence: Math.floor(60 + Math.random() * 30),
-    pointsEarn: Math.floor((parseFloat(offer.total_amount) || 0) * 3),
+    pointsEarn: Math.floor(priceUsd * 3),
     pointsCard: "Your Card",
     visaInfo: "Check visa requirements",
     safetyScore,
     isSkiplag: false,
     isSplitTicket: false,
     isResilientCarrier: false,
-    stopAirports: segments.length > 1 ? segments.slice(0, -1).map((s: any) => s.destination?.iata_code || "") : [],
     expiresAt: offer.expires_at || undefined,
+    emissionsKg: offer.emissions_kg || null,
   };
 }
 
@@ -517,7 +513,7 @@ const SearchResults = () => {
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
   const [searchError, setSearchError] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<{ source: "LIVE" | "MOCK" | "NONE"; offersReceived: number; origin: string; destination: string } | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{ source: string; offersReceived: number; origin: string; destination: string } | null>(null);
   const [safetyData, setSafetyData] = useState<SafetyData | null>(null);
 
   // Skiplag state
@@ -601,7 +597,7 @@ const SearchResults = () => {
       cabin_class: cabinClass,
       adults: adultsParam,
     };
-    console.log("[DEBUG] Search params:", searchParams);
+    // params logged for debugging
 
     try {
       const [flightResult, safetyResult] = await Promise.all([
@@ -629,24 +625,20 @@ const SearchResults = () => {
       }
 
       const { data, error } = flightResult;
-      console.log("[DEBUG] Duffel response data:", data);
-      console.log("[DEBUG] Duffel response error:", error);
+      // response received
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
-      console.log("[DEBUG] Offers array:", offers);
-      console.log("[DEBUG] Offers count:", Array.isArray(offers) ? offers.length : "not an array");
+      // offers extracted
 
       const score = sd?.safety_score ?? 8;
       if (Array.isArray(offers) && offers.length > 0) {
         const transformed = offers
-          .map((o: any, i: number) => {
-            console.log(`[DEBUG] Mapping offer ${i}:`, o);
-            return transformDuffelOffer(o, i, score);
-          })
+          .map((o: any, i: number) => transformDuffelOffer(o, i, score))
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
+        console.log('Search complete:', offers.length, 'offers received');
         setFlights(transformed);
         setDebugInfo({ source: "LIVE", offersReceived: offers.length, origin: originIata, destination: destination.iata });
 
@@ -655,13 +647,13 @@ const SearchResults = () => {
           checkSkiplagHistory(connectingAirlines);
         }
       } else {
-        console.log("[DEBUG] No offers found, falling back to error state");
+        // No offers found
         setSearchError(true);
         setFlights([]);
         setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination.iata });
       }
     } catch (err) {
-      console.error("[DEBUG] Search error:", err);
+      console.error("Search error:", err);
       setSearchError(true);
       setFlights([]);
       setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination?.iata || "?" });
@@ -818,21 +810,12 @@ const SearchResults = () => {
         />
       )}
 
-      {/* DEBUG BANNER — temporary */}
-      {debugInfo && (
-        <div className="mx-4 mt-2 mb-1 rounded-xl px-3 py-2 text-xs font-mono border border-border bg-card">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span>Data source:</span>
-            <span className={debugInfo.source === "LIVE" ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-              {debugInfo.source}
-            </span>
-            <span className="text-muted-foreground">|</span>
-            <span>Offers received: <strong className="text-foreground">{debugInfo.offersReceived}</strong></span>
-            <span className="text-muted-foreground">|</span>
-            <span>Last search: {debugInfo.origin} → {debugInfo.destination}</span>
-          </div>
-        </div>
-      )}
+      {/* Test mode pill */}
+      <div className="flex justify-end px-4 mt-2 mb-1">
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>
+          Test mode
+        </span>
+      </div>
 
 
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background border-b border-border">

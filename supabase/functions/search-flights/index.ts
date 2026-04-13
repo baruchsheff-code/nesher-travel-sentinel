@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     }
 
     // Step 2: Fetch all offers with pagination
-    const allOffers: unknown[] = [];
+    const allRawOffers: unknown[] = [];
     let afterCursor: string | null = null;
 
     do {
@@ -95,15 +95,87 @@ Deno.serve(async (req) => {
       }
 
       const offersData = await offersRes.json();
-      allOffers.push(...(offersData?.data || []));
+      allRawOffers.push(...(offersData?.data || []));
       afterCursor = offersData?.meta?.after ?? null;
     } while (afterCursor);
 
-    console.log(`Total offers fetched: ${allOffers.length}`);
+    // Step 3: Map raw Duffel offers to clean objects
+    const cleanOffers = (allRawOffers as any[]).map((offer) => {
+      try {
+        const slice = offer.slices[0];
+        const segments = slice.segments;
+        const firstSeg = segments[0];
+        const lastSeg = segments[segments.length - 1];
+
+        // Get layover airports
+        const stopAirports = segments
+          .slice(0, -1)
+          .map((s: any) => s.destination.iata_code);
+
+        // Parse duration from ISO to readable
+        const duration = slice.duration || '';
+        const durationMatch = duration.match(
+          /P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/
+        );
+        const days = parseInt(durationMatch?.[1] || '0');
+        const hours = parseInt(durationMatch?.[2] || '0');
+        const minutes = parseInt(durationMatch?.[3] || '0');
+        const totalHours = days * 24 + hours;
+        const readableDuration = totalHours > 0
+          ? `${totalHours}h ${minutes > 0 ? minutes + 'm' : ''}`.trim()
+          : `${minutes}m`;
+
+        return {
+          id: offer.id,
+          offer_id: offer.id,
+          airline_name: offer.owner?.name || 'Unknown',
+          airline_code: offer.owner?.iata_code || 'XX',
+          flight_number: firstSeg?.marketing_carrier_flight_number
+            || firstSeg?.operating_carrier_flight_number
+            || '',
+          cabin_class: firstSeg?.passengers?.[0]
+            ?.cabin_class_marketing_name
+            || firstSeg?.passengers?.[0]?.cabin_class
+            || 'Economy',
+          origin_iata: firstSeg?.origin?.iata_code || '',
+          origin_city: firstSeg?.origin?.city_name
+            || firstSeg?.origin?.name || '',
+          destination_iata: lastSeg?.destination?.iata_code || '',
+          destination_city: lastSeg?.destination?.city_name
+            || lastSeg?.destination?.name || '',
+          departure_time: firstSeg?.departing_at || '',
+          arrival_time: lastSeg?.arriving_at || '',
+          duration: readableDuration,
+          duration_raw: slice.duration,
+          stops: segments.length - 1,
+          stop_airports: stopAirports,
+          total_amount: offer.total_amount || '0',
+          total_currency: offer.total_currency || 'USD',
+          base_amount: offer.base_amount || '0',
+          tax_amount: offer.tax_amount || '0',
+          expires_at: offer.expires_at || '',
+          emissions_kg: offer.total_emissions_kg || null,
+          return_slice: offer.slices[1] ? {
+            departure_time: offer.slices[1]
+              .segments[0]?.departing_at,
+            arrival_time: offer.slices[1]
+              .segments[offer.slices[1].segments.length - 1]
+              ?.arriving_at,
+            duration: offer.slices[1].duration,
+            stops: offer.slices[1].segments.length - 1,
+          } : null,
+        };
+      } catch (e) {
+        console.error('Error mapping offer:', offer.id, e);
+        return null;
+      }
+    }).filter(Boolean);
+
+    console.log(`Total offers fetched: ${allRawOffers.length}, mapped: ${cleanOffers.length}`);
 
     return new Response(JSON.stringify({
       offer_request_id: offerRequestId,
-      offers: allOffers,
+      offers: cleanOffers,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
