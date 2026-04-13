@@ -15,7 +15,18 @@ interface WalletCard {
   card_name: string | null;
   card_issuer: string | null;
   transfer_partners: string[] | null;
+  points_multiplier: any;
 }
+
+const PRESET_CARDS = [
+  { card_name: "Amex Platinum", card_issuer: "American Express", points_multiplier: { travel: 5, other: 1 } },
+  { card_name: "Amex Gold", card_issuer: "American Express", points_multiplier: { dining: 4, flights: 3, other: 1 } },
+  { card_name: "Chase Sapphire Reserve", card_issuer: "Chase", points_multiplier: { travel: 3, other: 1 } },
+  { card_name: "Chase Sapphire Preferred", card_issuer: "Chase", points_multiplier: { travel: 2, other: 1 } },
+  { card_name: "Citi Premier", card_issuer: "Citi", points_multiplier: { travel: 3, other: 1 } },
+  { card_name: "Capital One Venture", card_issuer: "Capital One", points_multiplier: { everything: 2 } },
+  { card_name: "Discover it Miles", card_issuer: "Discover", points_multiplier: { everything: 1.5 } },
+] as const;
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -46,8 +57,6 @@ const Settings = () => {
   // Wallet
   const [cards, setCards] = useState<WalletCard[]>([]);
   const [showAddCard, setShowAddCard] = useState(false);
-  const [newCardName, setNewCardName] = useState("");
-  const [newCardIssuer, setNewCardIssuer] = useState("");
 
   // Auto Recovery (mandate)
   const [mandateActive, setMandateActive] = useState(false);
@@ -120,17 +129,23 @@ const Settings = () => {
     toast.success("Settings saved!");
   };
 
-  const handleAddCard = async () => {
-    if (!user || !newCardName.trim()) return;
+  const handleAddPresetCard = async (preset: typeof PRESET_CARDS[number]) => {
+    if (!user) return;
+    // Check if already added
+    if (cards.some(c => c.card_name === preset.card_name)) {
+      toast.error("Card already added");
+      return;
+    }
     const { data, error } = await supabase.from("user_wallet").insert({
-      user_id: user.id, card_name: newCardName, card_issuer: newCardIssuer || null,
+      user_id: user.id,
+      card_name: preset.card_name,
+      card_issuer: preset.card_issuer,
+      points_multiplier: preset.points_multiplier as any,
     }).select().single();
     if (!error && data) {
-      setCards([...cards, data]);
-      setNewCardName("");
-      setNewCardIssuer("");
+      setCards([...cards, data as WalletCard]);
       setShowAddCard(false);
-      toast.success("Card added");
+      toast.success(`${preset.card_name} added`);
     }
   };
 
@@ -263,35 +278,50 @@ const Settings = () => {
 
         {/* My Cards */}
         <SectionHeader icon={Wallet} title="My Cards" />
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">Select the cards you own to see points earnings on flights.</p>
         <div className="bg-card rounded-2xl border border-border p-4">
-          {cards.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">No cards added yet</p>
-          ) : (
-            <div className="space-y-3">
-              {cards.map((card) => (
-                <div key={card.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{card.card_name}</p>
-                    {card.card_issuer && <p className="text-xs text-muted-foreground">{card.card_issuer}</p>}
+          {cards.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {cards.map((card) => {
+                const mult = card.points_multiplier as Record<string, number> | null;
+                const multStr = mult ? Object.entries(mult).map(([k, v]) => `${v}x ${k}`).join(", ") : "";
+                return (
+                  <div key={card.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-background border border-border">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{card.card_name}</p>
+                      <p className="text-[11px] text-muted-foreground">{card.card_issuer}{multStr ? ` · ${multStr}` : ""}</p>
+                    </div>
+                    <button onClick={() => handleRemoveCard(card.id)} className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors shrink-0">
+                      <X size={14} className="text-destructive" />
+                    </button>
                   </div>
-                  <button onClick={() => handleRemoveCard(card.id)} className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors shrink-0">
-                    <X size={14} className="text-destructive" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {showAddCard ? (
-            <div className="mt-3 space-y-2">
-              <input value={newCardName} onChange={(e) => setNewCardName(e.target.value)} placeholder="Card name (e.g. Amex Gold)" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-              <input value={newCardIssuer} onChange={(e) => setNewCardIssuer(e.target.value)} placeholder="Issuer (e.g. American Express)" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-              <div className="flex gap-2">
-                <button onClick={() => setShowAddCard(false)} className="flex-1 py-2 rounded-xl text-xs font-medium border border-border text-muted-foreground">Cancel</button>
-                <button onClick={handleAddCard} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground">Add Card</button>
-              </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-foreground mb-2">Select a card to add:</p>
+              {PRESET_CARDS.filter(p => !cards.some(c => c.card_name === p.card_name)).map((preset) => {
+                const multStr = Object.entries(preset.points_multiplier).map(([k, v]) => `${v}x ${k}`).join(", ");
+                return (
+                  <button
+                    key={preset.card_name}
+                    onClick={() => handleAddPresetCard(preset)}
+                    className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl border border-border hover:border-primary/40 transition-colors text-left"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{preset.card_name}</p>
+                      <p className="text-[11px] text-muted-foreground">{preset.card_issuer} · {multStr}</p>
+                    </div>
+                    <Plus size={14} className="text-primary shrink-0" />
+                  </button>
+                );
+              })}
+              <button onClick={() => setShowAddCard(false)} className="w-full py-2 rounded-xl text-xs font-medium border border-border text-muted-foreground mt-1">Cancel</button>
             </div>
           ) : (
-            <button onClick={() => setShowAddCard(true)} className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 transition-colors">
+            <button onClick={() => setShowAddCard(true)} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 transition-colors">
               <Plus size={14} /> Add Card
             </button>
           )}

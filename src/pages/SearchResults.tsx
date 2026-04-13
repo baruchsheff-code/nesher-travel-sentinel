@@ -240,13 +240,53 @@ const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; pr
   );
 };
 
-const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+interface CardPoints {
+  cardName: string;
+  points: number;
+  valueUsd: number;
+  multiplier: number;
+}
+
+function calcCardPoints(priceUsd: number, cards: { card_name: string; points_multiplier: Record<string, number> }[]): CardPoints[] {
+  return cards.map(card => {
+    const mult = card.points_multiplier;
+    // Use flights/travel multiplier if available, else everything, else other
+    const m = mult.flights ?? mult.travel ?? mult.everything ?? mult.other ?? 1;
+    const points = Math.round(priceUsd * m);
+    return { cardName: card.card_name, points, valueUsd: points * 0.015, multiplier: m };
+  }).sort((a, b) => b.points - a.points);
+}
+
+const PointsBreakdown = ({ cardPoints, bestCard }: { cardPoints: CardPoints[]; bestCard: string }) => (
+  <div className="mt-2 rounded-xl px-3 py-3 bg-background border border-border">
+    <p className="text-xs font-semibold text-foreground mb-2">Points breakdown for this flight</p>
+    <div className="space-y-1.5">
+      {cardPoints.map(cp => (
+        <div key={cp.cardName} className="flex items-center justify-between text-xs">
+          <span className={cp.cardName === bestCard ? "font-semibold text-foreground" : "text-muted-foreground"}>
+            {cp.cardName} {cp.cardName === bestCard && "← best"}
+          </span>
+          <span className={cp.cardName === bestCard ? "font-semibold" : "text-muted-foreground"} style={cp.cardName === bestCard ? { color: "#C9A84C" } : {}}>
+            {cp.points.toLocaleString()} pts (~${cp.valueUsd.toFixed(2)})
+          </span>
+        </div>
+      ))}
+    </div>
+    <p className="text-[11px] text-muted-foreground mt-2">💡 Use <span className="font-semibold text-foreground">{bestCard}</span> for this booking to maximize your return.</p>
+  </div>
+);
+
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection, userCards }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null; userCards?: { card_name: string; points_multiplier: Record<string, number> }[] }) => {
+  const [showPointsBreakdown, setShowPointsBreakdown] = useState(false);
+
   // If this flight is skiplag-protected, show the protected card
   if (flight.isSkiplag && skiplagProtection) {
     return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
   }
 
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
+  const cardPoints = userCards && userCards.length > 0 ? calcCardPoints(flight.priceUsd, userCards) : [];
+  const bestCard = cardPoints.length > 0 ? cardPoints[0] : null;
 
   return (
     <div onClick={onSelect} className="rounded-2xl p-4 mb-3 relative cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border">
@@ -348,10 +388,30 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
       )}
 
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <CreditCard size={13} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
-        </div>
+        {bestCard ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowPointsBreakdown(!showPointsBreakdown); }}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
+            <CreditCard size={13} style={{ color: "#C9A84C" }} />
+            <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
+              💳 Best card: {bestCard.cardName} — earn {bestCard.points.toLocaleString()} pts (~${bestCard.valueUsd.toFixed(2)} value)
+            </span>
+          </button>
+        ) : userCards && userCards.length === 0 ? (
+          <button onClick={(e) => { e.stopPropagation(); window.location.href = "/settings"; }} className="flex items-center gap-2">
+            <CreditCard size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground underline">Add your cards to see points earnings →</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CreditCard size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
+          </div>
+        )}
+        {showPointsBreakdown && cardPoints.length > 0 && bestCard && (
+          <PointsBreakdown cardPoints={cardPoints} bestCard={bestCard.cardName} />
+        )}
         <div className="flex items-center gap-2">
           <Globe size={13} className="text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{flight.visaInfo}</span>
@@ -465,6 +525,9 @@ const SearchResults = () => {
   // Crisis-safe state
   const [resilientCodes, setResilientCodes] = useState<string[]>([]);
   const [resilientLoaded, setResilientLoaded] = useState(false);
+
+  // User wallet cards for points optimization
+  const [userCards, setUserCards] = useState<{ card_name: string; points_multiplier: Record<string, number> }[]>([]);
 
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
@@ -587,7 +650,7 @@ const SearchResults = () => {
     fetchFlights();
   }, [fetchFlights]);
 
-  // Fetch resilient airlines once
+  // Fetch resilient airlines + user wallet cards once
   useEffect(() => {
     const fetchResilient = async () => {
       try {
@@ -599,8 +662,18 @@ const SearchResults = () => {
         setResilientLoaded(true);
       }
     };
+    const fetchWallet = async () => {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id);
+        if (data) setUserCards(data.filter(c => c.card_name && c.points_multiplier).map(c => ({ card_name: c.card_name!, points_multiplier: c.points_multiplier as Record<string, number> })));
+      } catch (err) {
+        console.error("Failed to fetch wallet:", err);
+      }
+    };
     fetchResilient();
-  }, []);
+    fetchWallet();
+  }, [user?.id]);
 
   const handleSelectFlight = (flight: FlightResult) => {
     if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
@@ -859,6 +932,7 @@ const SearchResults = () => {
               isCritical={isCriticalDestination}
               isCrisisTab={activeTab === "crisis"}
               skiplagProtection={flight.isSkiplag ? (skiplagProtections[flight.airlineCode] || null) : undefined}
+              userCards={userCards}
             />
           ))
         )}
