@@ -131,17 +131,23 @@ const Settings = () => {
     toast.success("Settings saved!");
   };
 
-  const handleAddCard = async () => {
-    if (!user || !newCardName.trim()) return;
+  const handleAddPresetCard = async (preset: typeof PRESET_CARDS[number]) => {
+    if (!user) return;
+    // Check if already added
+    if (cards.some(c => c.card_name === preset.card_name)) {
+      toast.error("Card already added");
+      return;
+    }
     const { data, error } = await supabase.from("user_wallet").insert({
-      user_id: user.id, card_name: newCardName, card_issuer: newCardIssuer || null,
+      user_id: user.id,
+      card_name: preset.card_name,
+      card_issuer: preset.card_issuer,
+      points_multiplier: preset.points_multiplier as any,
     }).select().single();
     if (!error && data) {
-      setCards([...cards, data]);
-      setNewCardName("");
-      setNewCardIssuer("");
+      setCards([...cards, data as WalletCard]);
       setShowAddCard(false);
-      toast.success("Card added");
+      toast.success(`${preset.card_name} added`);
     }
   };
 
