@@ -314,6 +314,13 @@ const FlightDetail = () => {
               <span className="text-3xl font-bold text-primary">${flight.priceUsd.toLocaleString()}</span>
               <span className="text-xs text-muted-foreground ml-1">per person</span>
             </div>
+
+            {/* Offer expiry countdown */}
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              <Clock size={12} className="text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Offer expires in</span>
+              <span className="text-xs font-semibold text-foreground font-mono">{countdown}</span>
+            </div>
           </div>
 
           {/* Split ticket / skiplag warnings */}
