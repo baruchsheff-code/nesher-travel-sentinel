@@ -597,7 +597,7 @@ const SearchResults = () => {
       cabin_class: cabinClass,
       adults: adultsParam,
     };
-    console.log("[DEBUG] Search params:", searchParams);
+    // params logged for debugging
 
     try {
       const [flightResult, safetyResult] = await Promise.all([
@@ -625,23 +625,20 @@ const SearchResults = () => {
       }
 
       const { data, error } = flightResult;
-      console.log("[DEBUG] Duffel response data:", data);
-      console.log("[DEBUG] Duffel response error:", error);
+      // response received
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
-      console.log("[DEBUG] Offers array:", offers);
-      console.log("[DEBUG] Offers count:", Array.isArray(offers) ? offers.length : "not an array");
+      // offers extracted
 
       const score = sd?.safety_score ?? 8;
       if (Array.isArray(offers) && offers.length > 0) {
         const transformed = offers
-          .map((o: any, i: number) => {
-            console.log(`[DEBUG] Mapping offer ${i}:`, o);
-            return transformDuffelOffer(o, i, score);
-          })
+          .map((o: any, i: number) => transformDuffelOffer(o, i, score))
+          .filter((f: FlightResult) => f.airlineCode !== "ZZ");
+        console.log('Search complete:', offers.length, 'offers received');
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
         setDebugInfo({ source: "LIVE", offersReceived: offers.length, origin: originIata, destination: destination.iata });
@@ -651,13 +648,13 @@ const SearchResults = () => {
           checkSkiplagHistory(connectingAirlines);
         }
       } else {
-        console.log("[DEBUG] No offers found, falling back to error state");
+        // No offers found
         setSearchError(true);
         setFlights([]);
         setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination.iata });
       }
     } catch (err) {
-      console.error("[DEBUG] Search error:", err);
+      console.error("Search error:", err);
       setSearchError(true);
       setFlights([]);
       setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination?.iata || "?" });
