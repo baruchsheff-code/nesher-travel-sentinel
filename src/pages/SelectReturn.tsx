@@ -41,8 +41,11 @@ export default function SelectReturn() {
       });
       if (err) throw err;
       if (data?.offers && Array.isArray(data.offers)) {
-        console.log("Search complete:", data.offers.length, "return offers received");
-        setAllReturnOffers(data.offers);
+        const realOffers = data.offers.filter((offer: DuffelOffer) =>
+          offer.airline_code !== 'ZZ' && offer.airline_name !== 'Duffel Airways'
+        );
+        console.log("Search complete:", realOffers.length, "return offers received");
+        setAllReturnOffers(realOffers);
       } else {
         setError(true);
       }
