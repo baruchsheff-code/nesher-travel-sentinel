@@ -184,16 +184,66 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
   );
 };
 
-const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }: { flight: FlightResult; isHiddenBySkiplag?: boolean; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean }) => {
-  const [expanded, setExpanded] = useState(false);
+const SkiplagWarningModal = ({ onAccept, onCancel }: { onAccept: () => void; onCancel: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCancel}>
+    <div className="bg-card rounded-2xl max-w-md w-full p-6 border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-foreground">Understanding Hidden-City Fares</h3>
+        <button onClick={onCancel}><X size={20} className="text-muted-foreground" /></button>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        A hidden-city fare means booking a flight with a connection, then leaving the airport at your connection city — not flying the final leg.
+      </p>
+      <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
+        <p className="text-xs font-semibold mb-2" style={{ color: "#FBBF24" }}>⚠️ Rules you MUST follow:</p>
+        <ul className="space-y-1.5 text-xs text-muted-foreground">
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Carry-on bags only — checked bags go to the final destination</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />One-way tickets only — return legs get cancelled if you skip</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Cannot be a frequent flyer booking</li>
+          <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: "#FBBF24" }} />Use sparingly — airlines track this</li>
+        </ul>
+      </div>
+      <p className="text-xs text-muted-foreground mb-5">
+        Nesher protects your account automatically. We hide these fares if you've used one on this airline in the last 6 months.
+      </p>
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 rounded-xl py-2.5 text-sm font-medium border border-border text-muted-foreground">Cancel</button>
+        <button onClick={onAccept} className="flex-1 rounded-xl py-2.5 text-sm font-semibold" style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}>I understand, show them</button>
+      </div>
+    </div>
+  </div>
+);
 
-  if (isHiddenBySkiplag && !expanded) {
-    return (
-      <button onClick={() => setExpanded(true)} className="w-full rounded-2xl px-4 py-3 flex items-center justify-between mb-3 bg-card border border-border">
-        <span className="text-xs text-muted-foreground">1 hidden-city fare hidden — protecting your {flight.airlineName} account 🛡️</span>
-        <ChevronDown size={14} className="text-muted-foreground" />
+interface SkiplagProtection {
+  airlineCode: string;
+  daysAgo: number;
+  availableIn: number;
+}
+
+const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; protection: SkiplagProtection }) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mb-3">
+      <button onClick={() => setExpanded(!expanded)} className="w-full rounded-2xl px-4 py-3 flex items-center justify-between bg-card border border-border">
+        <span className="text-xs text-muted-foreground">🛡️ 1 hidden-city fare hidden — protecting your {flight.airlineName} account</span>
+        <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", expanded && "rotate-180")} />
       </button>
-    );
+      {expanded && (
+        <div className="mt-1 rounded-2xl px-4 py-3 bg-card border border-border">
+          <p className="text-xs text-muted-foreground">
+            You used a hidden-city fare on <span className="font-semibold text-foreground">{flight.airlineName}</span> {protection.daysAgo} days ago. We've hidden this fare to protect your frequent flyer account from being flagged.
+          </p>
+          <p className="text-xs mt-1.5 font-medium" style={{ color: "#FBBF24" }}>Available again in {protection.availableIn} days.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+  // If this flight is skiplag-protected, show the protected card
+  if (flight.isSkiplag && skiplagProtection) {
+    return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
   }
 
   const predColor = flight.prediction === "buy" ? "#22C55E" : "hsl(var(--muted-foreground))";
@@ -283,6 +333,12 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }
         </div>
       )}
 
+      {flight.isSkiplag && !skiplagProtection && (
+        <div className="mb-2 rounded-xl px-3 py-1.5" style={{ backgroundColor: "rgba(251, 191, 36, 0.08)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
+          <p className="text-[11px] font-medium" style={{ color: "#FBBF24" }}>🧳 Carry-on only · Read the rules before booking</p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <CreditCard size={13} className="text-muted-foreground" />
@@ -299,12 +355,6 @@ const FlightCard = ({ flight, isHiddenBySkiplag, onSelect, onWatch, isCritical }
           </div>
         )}
       </div>
-
-      {isHiddenBySkiplag && expanded && (
-        <div className="mt-3 rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", border: "1px solid rgba(251, 191, 36, 0.2)" }}>
-          <p className="text-xs" style={{ color: "#FBBF24" }}>⚠️ Hidden-city ticketing on {flight.airlineName} may risk your frequent flyer account.</p>
-        </div>
-      )}
     </div>
   );
 };
