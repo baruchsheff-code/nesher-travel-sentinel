@@ -376,6 +376,7 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
         </div>
       )}
 
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 group relative">
           <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
           {(flight.baseAmount != null || flight.taxAmount != null) && (
