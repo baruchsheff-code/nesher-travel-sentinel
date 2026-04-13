@@ -240,7 +240,7 @@ const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; pr
   );
 };
 
-const FlightCard = ({ flight, onSelect, onWatch, isCritical, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
   // If this flight is skiplag-protected, show the protected card
   if (flight.isSkiplag && skiplagProtection) {
     return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
