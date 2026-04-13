@@ -454,6 +454,10 @@ const SearchResults = () => {
   const [skiplagModalOpen, setSkiplagModalOpen] = useState(false);
   const [skiplagProtections, setSkiplagProtections] = useState<Record<string, SkiplagProtection>>({});
 
+  // Crisis-safe state
+  const [resilientCodes, setResilientCodes] = useState<string[]>([]);
+  const [resilientLoaded, setResilientLoaded] = useState(false);
+
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
   const destCountry = searchParams.get("destCountry") || "";
