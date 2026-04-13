@@ -590,7 +590,7 @@ const SearchResults = () => {
     fetchFlights();
   }, [fetchFlights]);
 
-  // Fetch resilient airlines once
+  // Fetch resilient airlines + user wallet cards once
   useEffect(() => {
     const fetchResilient = async () => {
       try {
@@ -602,8 +602,18 @@ const SearchResults = () => {
         setResilientLoaded(true);
       }
     };
+    const fetchWallet = async () => {
+      if (!user?.id) return;
+      try {
+        const { data } = await supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id);
+        if (data) setUserCards(data.filter(c => c.card_name && c.points_multiplier).map(c => ({ card_name: c.card_name!, points_multiplier: c.points_multiplier as Record<string, number> })));
+      } catch (err) {
+        console.error("Failed to fetch wallet:", err);
+      }
+    };
     fetchResilient();
-  }, []);
+    fetchWallet();
+  }, [user?.id]);
 
   const handleSelectFlight = (flight: FlightResult) => {
     if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
