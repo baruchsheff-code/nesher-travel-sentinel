@@ -10,6 +10,7 @@ import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSea
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFlightContext } from "@/contexts/FlightContext";
 import { toast } from "sonner";
 
 type SortMode = "best" | "cheapest" | "fastest" | "crisis";
@@ -508,6 +509,7 @@ function transformDuffelOffer(offer: any, index: number, safetyScore: number): F
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setSelectedOffer } = useFlightContext();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SortMode>("best");
   const [watchFlight, setWatchFlight] = useState<FlightResult | null>(null);
@@ -676,7 +678,8 @@ const SearchResults = () => {
   }, [user?.id]);
 
   const handleSelectFlight = (flight: FlightResult) => {
-    if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
+    setSelectedOffer(flight);
+    navigate('/flight-detail');
   };
 
   const handleEditSearch = (params: FlightSearchParams) => {

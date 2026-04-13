@@ -1,16 +1,17 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft, Plane, Shield, Umbrella, Signal, Coffee, Lock, Bird,
-  Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle
+  Ticket, RefreshCw, CheckCircle2, Loader2, Info, Zap, AlertTriangle, Clock
 } from "lucide-react";
 import PassengerForm, { type PassengerData } from "@/components/PassengerForm";
 import PaymentScreen from "@/components/PaymentScreen";
 import BookingConfirmation from "@/components/BookingConfirmation";
 import SeatSelector from "@/components/SeatSelector";
-import { getMockFlightsForDestination, type FlightResult } from "@/lib/mockFlights";
+import { type FlightResult } from "@/lib/mockFlights";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFlightContext } from "@/contexts/FlightContext";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -25,16 +26,41 @@ const COUNTRY_MAP: Record<string, string> = {
 };
 
 const FlightDetail = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const flightId = searchParams.get("id") || "";
-  const dest = searchParams.get("dest") || "";
+  const { selectedOffer } = useFlightContext();
+  const flight = selectedOffer;
 
-  const flight = useMemo(() => {
-    const allFlights = getMockFlightsForDestination(dest);
-    return allFlights.find((f) => f.id === flightId) || null;
-  }, [flightId, dest]);
+  // Offer expiry countdown
+  const [expired, setExpired] = useState(false);
+  const [countdown, setCountdown] = useState("");
+
+  useEffect(() => {
+    if (!flight) {
+      toast.info("Please select a flight to continue");
+      navigate("/search", { replace: true });
+      return;
+    }
+    // Simulate an expires_at 30 minutes from now if not present
+    const expiresAt = (flight as any).expires_at
+      ? new Date((flight as any).expires_at)
+      : new Date(Date.now() + 30 * 60 * 1000);
+
+    const tick = () => {
+      const diff = expiresAt.getTime() - Date.now();
+      if (diff <= 0) {
+        setExpired(true);
+        setCountdown("00:00");
+        return;
+      }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [flight, navigate]);
 
   const [isBooking, setIsBooking] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
@@ -68,12 +94,22 @@ const FlightDetail = () => {
   const hasCardMandate = false;
 
   if (!flight) {
+    return null; // Will redirect via useEffect
+  }
+
+  if (expired) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-foreground">Flight not found</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-sm font-medium underline text-primary">
-            Go back
+        <div className="text-center space-y-4">
+          <AlertTriangle size={40} className="text-destructive mx-auto" />
+          <p className="text-lg font-semibold text-foreground">This fare has expired.</p>
+          <p className="text-sm text-muted-foreground">Search again for current prices.</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-2 px-6 py-2.5 rounded-2xl text-sm font-semibold"
+            style={{ backgroundColor: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+          >
+            Search again
           </button>
         </div>
       </div>
@@ -277,6 +313,13 @@ const FlightDetail = () => {
             <div className="mt-4 text-center">
               <span className="text-3xl font-bold text-primary">${flight.priceUsd.toLocaleString()}</span>
               <span className="text-xs text-muted-foreground ml-1">per person</span>
+            </div>
+
+            {/* Offer expiry countdown */}
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              <Clock size={12} className="text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Offer expires in</span>
+              <span className="text-xs font-semibold text-foreground font-mono">{countdown}</span>
             </div>
           </div>
 

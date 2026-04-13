@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { FlightProvider } from "@/contexts/FlightContext";
 import OfflineBanner from "@/components/OfflineBanner";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useCallback } from "react";
@@ -38,11 +39,12 @@ const App = () => {
           <AuthProvider>
             <NotificationProvider>
             <OfflineProvider>
+            <FlightProvider>
             <OfflineBanner />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/search" element={<SearchResults />} />
-              <Route path="/flight" element={<FlightDetail />} />
+              <Route path="/flight-detail" element={<FlightDetail />} />
               <Route path="/my-trips" element={<MyTrips />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/support" element={<Settings />} />
@@ -53,6 +55,7 @@ const App = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </FlightProvider>
             </OfflineProvider>
             </NotificationProvider>
           </AuthProvider>
