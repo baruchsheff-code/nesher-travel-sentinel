@@ -254,6 +254,14 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
         <SafetyScoreBadge score={flight.safetyScore} />
       </div>
 
+      {isCrisisTab && flight.isResilientCarrier && (
+        <div className="mb-2 group/crisis relative">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(201, 168, 76, 0.15)", color: "#C9A84C" }}>🛡️ Crisis-Safe Carrier</span>
+          <div className="absolute bottom-full left-0 mb-1 hidden group-hover/crisis:block bg-popover border border-border text-popover-foreground text-xs rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap z-50 max-w-[260px] whitespace-normal">
+            This airline has historically maintained service during regional disruptions when other carriers cancelled.
+          </div>
+        </div>
+      )}
       {flight.isSkiplag && (
         <div className="mb-2">
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>Hidden City Fare ⚡</span>
