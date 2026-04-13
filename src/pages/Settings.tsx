@@ -280,35 +280,50 @@ const Settings = () => {
 
         {/* My Cards */}
         <SectionHeader icon={Wallet} title="My Cards" />
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">Select the cards you own to see points earnings on flights.</p>
         <div className="bg-card rounded-2xl border border-border p-4">
-          {cards.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">No cards added yet</p>
-          ) : (
-            <div className="space-y-3">
-              {cards.map((card) => (
-                <div key={card.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{card.card_name}</p>
-                    {card.card_issuer && <p className="text-xs text-muted-foreground">{card.card_issuer}</p>}
+          {cards.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {cards.map((card) => {
+                const mult = card.points_multiplier as Record<string, number> | null;
+                const multStr = mult ? Object.entries(mult).map(([k, v]) => `${v}x ${k}`).join(", ") : "";
+                return (
+                  <div key={card.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-background border border-border">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{card.card_name}</p>
+                      <p className="text-[11px] text-muted-foreground">{card.card_issuer}{multStr ? ` · ${multStr}` : ""}</p>
+                    </div>
+                    <button onClick={() => handleRemoveCard(card.id)} className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors shrink-0">
+                      <X size={14} className="text-destructive" />
+                    </button>
                   </div>
-                  <button onClick={() => handleRemoveCard(card.id)} className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors shrink-0">
-                    <X size={14} className="text-destructive" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {showAddCard ? (
-            <div className="mt-3 space-y-2">
-              <input value={newCardName} onChange={(e) => setNewCardName(e.target.value)} placeholder="Card name (e.g. Amex Gold)" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-              <input value={newCardIssuer} onChange={(e) => setNewCardIssuer(e.target.value)} placeholder="Issuer (e.g. American Express)" className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-              <div className="flex gap-2">
-                <button onClick={() => setShowAddCard(false)} className="flex-1 py-2 rounded-xl text-xs font-medium border border-border text-muted-foreground">Cancel</button>
-                <button onClick={handleAddCard} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground">Add Card</button>
-              </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-foreground mb-2">Select a card to add:</p>
+              {PRESET_CARDS.filter(p => !cards.some(c => c.card_name === p.card_name)).map((preset) => {
+                const multStr = Object.entries(preset.points_multiplier).map(([k, v]) => `${v}x ${k}`).join(", ");
+                return (
+                  <button
+                    key={preset.card_name}
+                    onClick={() => handleAddPresetCard(preset)}
+                    className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl border border-border hover:border-primary/40 transition-colors text-left"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{preset.card_name}</p>
+                      <p className="text-[11px] text-muted-foreground">{preset.card_issuer} · {multStr}</p>
+                    </div>
+                    <Plus size={14} className="text-primary shrink-0" />
+                  </button>
+                );
+              })}
+              <button onClick={() => setShowAddCard(false)} className="w-full py-2 rounded-xl text-xs font-medium border border-border text-muted-foreground mt-1">Cancel</button>
             </div>
           ) : (
-            <button onClick={() => setShowAddCard(true)} className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 transition-colors">
+            <button onClick={() => setShowAddCard(true)} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 transition-colors">
               <Plus size={14} /> Add Card
             </button>
           )}
