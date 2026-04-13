@@ -266,7 +266,7 @@ const FlightDetail = () => {
             </button>
             <Bird className="text-primary shrink-0" size={20} strokeWidth={2.5} />
             <h1 className="text-base font-semibold text-foreground truncate flex-1">Flight Details</h1>
-            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">DEMO</span>
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>Test mode</span>
           </div>
         </div>
 

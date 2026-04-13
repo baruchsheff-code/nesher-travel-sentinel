@@ -810,21 +810,12 @@ const SearchResults = () => {
         />
       )}
 
-      {/* DEBUG BANNER — temporary */}
-      {debugInfo && (
-        <div className="mx-4 mt-2 mb-1 rounded-xl px-3 py-2 text-xs font-mono border border-border bg-card">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span>Data source:</span>
-            <span className={debugInfo.source === "LIVE" ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-              {debugInfo.source}
-            </span>
-            <span className="text-muted-foreground">|</span>
-            <span>Offers received: <strong className="text-foreground">{debugInfo.offersReceived}</strong></span>
-            <span className="text-muted-foreground">|</span>
-            <span>Last search: {debugInfo.origin} → {debugInfo.destination}</span>
-          </div>
-        </div>
-      )}
+      {/* Test mode pill */}
+      <div className="flex justify-end px-4 mt-2 mb-1">
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>
+          Test mode
+        </span>
+      </div>
 
 
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background border-b border-border">
