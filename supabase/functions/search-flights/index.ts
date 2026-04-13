@@ -70,31 +70,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Step 2: Fetch offers
-    const offersRes = await fetch(
-      `https://api.duffel.com/air/offers?offer_request_id=${offerRequestId}&sort=total_amount&limit=10`,
-      {
+    // Step 2: Fetch all offers with pagination
+    const allOffers: unknown[] = [];
+    let afterCursor: string | null = null;
+
+    do {
+      let url = `https://api.duffel.com/air/offers?offer_request_id=${offerRequestId}&sort=total_amount&limit=200`;
+      if (afterCursor) url += `&after=${afterCursor}`;
+
+      const offersRes = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${DUFFEL_API_KEY}`,
           "Duffel-Version": "v2",
           "Content-Type": "application/json",
         },
-      },
-    );
-
-    if (!offersRes.ok) {
-      const errBody = await offersRes.text();
-      console.error("Duffel offers failed:", offersRes.status, errBody);
-      return new Response(JSON.stringify({ error: "Failed to fetch offers", details: errBody }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
 
-    const offersData = await offersRes.json();
+      if (!offersRes.ok) {
+        const errBody = await offersRes.text();
+        console.error("Duffel offers failed:", offersRes.status, errBody);
+        return new Response(JSON.stringify({ error: "Failed to fetch offers", details: errBody }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const offersData = await offersRes.json();
+      allOffers.push(...(offersData?.data || []));
+      afterCursor = offersData?.meta?.after ?? null;
+    } while (afterCursor);
+
+    console.log(`Total offers fetched: ${allOffers.length}`);
 
     return new Response(JSON.stringify({
       offer_request_id: offerRequestId,
-      offers: offersData?.data || [],
+      offers: allOffers,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
