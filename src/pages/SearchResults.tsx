@@ -932,6 +932,7 @@ const SearchResults = () => {
               isCritical={isCriticalDestination}
               isCrisisTab={activeTab === "crisis"}
               skiplagProtection={flight.isSkiplag ? (skiplagProtections[flight.airlineCode] || null) : undefined}
+              userCards={userCards}
             />
           ))
         )}
