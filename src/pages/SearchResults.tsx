@@ -466,6 +466,9 @@ const SearchResults = () => {
   const [resilientCodes, setResilientCodes] = useState<string[]>([]);
   const [resilientLoaded, setResilientLoaded] = useState(false);
 
+  // User wallet cards for points optimization
+  const [userCards, setUserCards] = useState<{ card_name: string; points_multiplier: Record<string, number> }[]>([]);
+
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
   const destCountry = searchParams.get("destCountry") || "";
