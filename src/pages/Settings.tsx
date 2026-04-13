@@ -15,7 +15,7 @@ interface WalletCard {
   card_name: string | null;
   card_issuer: string | null;
   transfer_partners: string[] | null;
-  points_multiplier: Record<string, number> | null;
+  points_multiplier: any;
 }
 
 const PRESET_CARDS = [
