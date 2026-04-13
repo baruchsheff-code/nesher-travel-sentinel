@@ -676,7 +676,8 @@ const SearchResults = () => {
   }, [user?.id]);
 
   const handleSelectFlight = (flight: FlightResult) => {
-    if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
+    setSelectedOffer(flight);
+    navigate('/flight-detail');
   };
 
   const handleEditSearch = (params: FlightSearchParams) => {
