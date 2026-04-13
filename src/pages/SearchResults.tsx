@@ -53,7 +53,11 @@ const SearchResults = () => {
   const destination = useMemo(() => {
     if (destIata) return findDestByIata(destIata) || { iata: destIata, city: destCity, country: destCountry, flag: destFlag, airport: "" };
     return parseDestination(sp.get("q") || "");
-  }, [destIata, destCity, destCountry, destFlag, sp]);
+  }, [destIata, destCity, destCountry, destFlag]);
+
+  // Stable search key to prevent duplicate API calls
+  const searchKey = `${originIata}-${destIata}-${dateStr}-${cabinClass}-${adultsParam}-${tripType}`;
+  const [lastSearchKey, setLastSearchKey] = useState("");
 
   const fetchFlights = useCallback(async () => {
     setSearchError(false);
@@ -114,9 +118,11 @@ const SearchResults = () => {
   }, [destination, originIata, dateStr, cabinClass, adultsParam, tripType, returnDateStr, originCity, setCtxParams, setAllOutboundOffers]);
 
   useEffect(() => {
+    if (searchKey === lastSearchKey) return;
+    setLastSearchKey(searchKey);
     setLoading(true);
     fetchFlights();
-  }, [fetchFlights]);
+  }, [searchKey, lastSearchKey, fetchFlights]);
 
   const handleSelectFlight = (offer: DuffelOffer) => {
     setOutboundOffer(offer);
