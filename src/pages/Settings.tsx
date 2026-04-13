@@ -57,8 +57,6 @@ const Settings = () => {
   // Wallet
   const [cards, setCards] = useState<WalletCard[]>([]);
   const [showAddCard, setShowAddCard] = useState(false);
-  const [newCardName, setNewCardName] = useState("");
-  const [newCardIssuer, setNewCardIssuer] = useState("");
 
   // Auto Recovery (mandate)
   const [mandateActive, setMandateActive] = useState(false);
