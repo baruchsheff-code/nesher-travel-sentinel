@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-type SortMode = "best" | "cheapest" | "fastest";
+type SortMode = "best" | "cheapest" | "fastest" | "crisis";
 
 interface SafetyData {
   city: string;
@@ -240,7 +240,7 @@ const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; pr
   );
 };
 
-const FlightCard = ({ flight, onSelect, onWatch, isCritical, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
   // If this flight is skiplag-protected, show the protected card
   if (flight.isSkiplag && skiplagProtection) {
     return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
@@ -254,6 +254,14 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, skiplagProtection }
         <SafetyScoreBadge score={flight.safetyScore} />
       </div>
 
+      {isCrisisTab && flight.isResilientCarrier && (
+        <div className="mb-2 group/crisis relative">
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(201, 168, 76, 0.15)", color: "#C9A84C" }}>🛡️ Crisis-Safe Carrier</span>
+          <div className="absolute bottom-full left-0 mb-1 hidden group-hover/crisis:block bg-popover border border-border text-popover-foreground text-xs rounded-lg px-3 py-1.5 shadow-lg whitespace-nowrap z-50 max-w-[260px] whitespace-normal">
+            This airline has historically maintained service during regional disruptions when other carriers cancelled.
+          </div>
+        </div>
+      )}
       {flight.isSkiplag && (
         <div className="mb-2">
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(251, 191, 36, 0.15)", color: "#FBBF24" }}>Hidden City Fare ⚡</span>
@@ -454,6 +462,10 @@ const SearchResults = () => {
   const [skiplagModalOpen, setSkiplagModalOpen] = useState(false);
   const [skiplagProtections, setSkiplagProtections] = useState<Record<string, SkiplagProtection>>({});
 
+  // Crisis-safe state
+  const [resilientCodes, setResilientCodes] = useState<string[]>([]);
+  const [resilientLoaded, setResilientLoaded] = useState(false);
+
   const destIata = searchParams.get("dest") || "";
   const destCity = searchParams.get("destCity") || "";
   const destCountry = searchParams.get("destCountry") || "";
@@ -575,6 +587,21 @@ const SearchResults = () => {
     fetchFlights();
   }, [fetchFlights]);
 
+  // Fetch resilient airlines once
+  useEffect(() => {
+    const fetchResilient = async () => {
+      try {
+        const { data } = await supabase.from("resilient_airlines").select("airline_code");
+        if (data) setResilientCodes(data.map(a => a.airline_code).filter(Boolean) as string[]);
+      } catch (err) {
+        console.error("Failed to fetch resilient airlines:", err);
+      } finally {
+        setResilientLoaded(true);
+      }
+    };
+    fetchResilient();
+  }, []);
+
   const handleSelectFlight = (flight: FlightResult) => {
     if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
   };
@@ -613,6 +640,7 @@ const SearchResults = () => {
     { key: "best", label: "Best Value" },
     { key: "cheapest", label: "Cheapest" },
     { key: "fastest", label: "Fastest" },
+    { key: "crisis", label: "Crisis-Safe" },
   ];
 
   const getDurationMins = (f: FlightResult) => {
@@ -626,16 +654,22 @@ const SearchResults = () => {
     return flights.map(f => ({
       ...f,
       isSkiplag: showSkiplags && f.stops > 0,
+      isResilientCarrier: resilientCodes.includes(f.airlineCode),
     }));
-  }, [flights, showSkiplags]);
+  }, [flights, showSkiplags, resilientCodes]);
+
+  const crisisSafeFlights = useMemo(() => {
+    return processedFlights.filter(f => resilientCodes.includes(f.airlineCode));
+  }, [processedFlights, resilientCodes]);
 
   const sortedFlights = useMemo(() => {
-    const list = [...processedFlights];
+    const base = activeTab === "crisis" ? crisisSafeFlights : processedFlights;
+    const list = [...base];
     if (activeTab === "cheapest") list.sort((a, b) => a.priceUsd - b.priceUsd);
     else if (activeTab === "fastest") list.sort((a, b) => getDurationMins(a) - getDurationMins(b));
     else list.sort((a, b) => (a.priceUsd + getDurationMins(a) * 0.5) - (b.priceUsd + getDurationMins(b) * 0.5));
     return list;
-  }, [processedFlights, activeTab]);
+  }, [processedFlights, crisisSafeFlights, activeTab]);
 
   const hasConnectingFlights = flights.some(f => f.stops > 0);
   const isCriticalDestination = safetyData?.alert_level === "critical";
@@ -781,17 +815,53 @@ const SearchResults = () => {
         )}
       </div>
 
+      {/* Crisis-Safe explanation card */}
+      {activeTab === "crisis" && (
+        <div className="mx-4 mb-4 rounded-2xl px-4 py-4 border border-border bg-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={18} style={{ color: "#C9A84C" }} />
+            <h3 className="text-sm font-bold text-foreground">Why crisis-safe routing?</h3>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            When situations escalate, Western carriers often suspend service first. Regional flag carriers like El Al, Turkish Airlines, and Emirates typically maintain flights longer — giving you the best chance of actually reaching your destination.
+          </p>
+        </div>
+      )}
+
       <div className="px-4">
-        {sortedFlights.map((flight) => (
-          <FlightCard
-            key={flight.id}
-            flight={flight}
-            onSelect={() => handleSelectFlight(flight)}
-            onWatch={() => setWatchFlight(flight)}
-            isCritical={isCriticalDestination}
-            skiplagProtection={flight.isSkiplag ? (skiplagProtections[flight.airlineCode] || null) : undefined}
-          />
-        ))}
+        {activeTab === "crisis" && sortedFlights.length === 0 && resilientLoaded ? (
+          <div className="rounded-2xl px-5 py-5 border border-border bg-card text-center">
+            <Shield size={32} className="mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm font-semibold text-foreground mb-2">No direct resilient carrier flights found for this route.</p>
+            <p className="text-xs text-muted-foreground mb-4">Consider a split-ticket route:</p>
+            <p className="text-xs text-muted-foreground mb-3">{originIata} → Hub → {destination?.iata}</p>
+            <div className="text-left space-y-1.5 mb-5">
+              <p className="text-xs text-muted-foreground font-medium">Common safe hubs for this region:</p>
+              <p className="text-xs text-muted-foreground">• Athens (ATH) — 4h from TLV on El Al</p>
+              <p className="text-xs text-muted-foreground">• Larnaca (LCA) — 1h from TLV on Arkia</p>
+              <p className="text-xs text-muted-foreground">• Dubai (DXB) — 4h from TLV on flydubai</p>
+            </div>
+            <button
+              className="rounded-full px-5 py-2.5 text-sm font-semibold"
+              style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}
+              onClick={() => toast.info("Split-ticket search coming soon!")}
+            >
+              Search split-ticket routes
+            </button>
+          </div>
+        ) : (
+          sortedFlights.map((flight) => (
+            <FlightCard
+              key={flight.id}
+              flight={flight}
+              onSelect={() => handleSelectFlight(flight)}
+              onWatch={() => setWatchFlight(flight)}
+              isCritical={isCriticalDestination}
+              isCrisisTab={activeTab === "crisis"}
+              skiplagProtection={flight.isSkiplag ? (skiplagProtections[flight.airlineCode] || null) : undefined}
+            />
+          ))
+        )}
       </div>
 
       {watchFlight && destination && (
