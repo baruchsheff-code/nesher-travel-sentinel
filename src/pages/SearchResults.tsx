@@ -517,6 +517,7 @@ const SearchResults = () => {
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
   const [searchError, setSearchError] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{ source: "LIVE" | "MOCK" | "NONE"; offersReceived: number; origin: string; destination: string } | null>(null);
   const [safetyData, setSafetyData] = useState<SafetyData | null>(null);
 
   // Skiplag state
@@ -589,8 +590,18 @@ const SearchResults = () => {
       setSearchError(true);
       setFlights([]);
       setLoading(false);
+      setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata || "?", destination: destination?.iata || "?" });
       return;
     }
+
+    const searchParams = {
+      origin: originIata,
+      destination: destination.iata,
+      departure_date: dateStr,
+      cabin_class: cabinClass,
+      adults: adultsParam,
+    };
+    console.log("[DEBUG] Search params:", searchParams);
 
     try {
       const [flightResult, safetyResult] = await Promise.all([
@@ -618,30 +629,42 @@ const SearchResults = () => {
       }
 
       const { data, error } = flightResult;
+      console.log("[DEBUG] Duffel response data:", data);
+      console.log("[DEBUG] Duffel response error:", error);
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       const offers = data?.offers;
+      console.log("[DEBUG] Offers array:", offers);
+      console.log("[DEBUG] Offers count:", Array.isArray(offers) ? offers.length : "not an array");
+
       const score = sd?.safety_score ?? 8;
       if (Array.isArray(offers) && offers.length > 0) {
         const transformed = offers
-          .map((o: any, i: number) => transformDuffelOffer(o, i, score))
+          .map((o: any, i: number) => {
+            console.log(`[DEBUG] Mapping offer ${i}:`, o);
+            return transformDuffelOffer(o, i, score);
+          })
           .filter((f: FlightResult) => f.airlineCode !== "ZZ");
         setFlights(transformed);
+        setDebugInfo({ source: "LIVE", offersReceived: offers.length, origin: originIata, destination: destination.iata });
 
-        // Check skiplag history for airlines with connecting flights
         const connectingAirlines = [...new Set(transformed.filter(f => f.stops > 0).map(f => f.airlineCode))];
         if (connectingAirlines.length > 0) {
           checkSkiplagHistory(connectingAirlines);
         }
       } else {
+        console.log("[DEBUG] No offers found, falling back to error state");
         setSearchError(true);
         setFlights([]);
+        setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination.iata });
       }
     } catch (err) {
-      console.error("Search error:", err);
+      console.error("[DEBUG] Search error:", err);
       setSearchError(true);
       setFlights([]);
+      setDebugInfo({ source: "NONE", offersReceived: 0, origin: originIata, destination: destination?.iata || "?" });
     } finally {
       setLoading(false);
     }
@@ -795,7 +818,23 @@ const SearchResults = () => {
         />
       )}
 
-      {/* Condensed search header */}
+      {/* DEBUG BANNER — temporary */}
+      {debugInfo && (
+        <div className="mx-4 mt-2 mb-1 rounded-xl px-3 py-2 text-xs font-mono border border-border bg-card">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>Data source:</span>
+            <span className={debugInfo.source === "LIVE" ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+              {debugInfo.source}
+            </span>
+            <span className="text-muted-foreground">|</span>
+            <span>Offers received: <strong className="text-foreground">{debugInfo.offersReceived}</strong></span>
+            <span className="text-muted-foreground">|</span>
+            <span>Last search: {debugInfo.origin} → {debugInfo.destination}</span>
+          </div>
+        </div>
+      )}
+
+
       <div className="sticky top-0 z-20 px-4 pt-4 pb-3 bg-background border-b border-border">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="shrink-0">
