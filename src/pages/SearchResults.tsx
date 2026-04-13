@@ -349,6 +349,33 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
         </div>
       </div>
 
+      {flight.returnSlice && (
+        <div className="mb-4 pt-3 border-t border-border">
+          <p className="text-[11px] font-medium text-muted-foreground mb-2">Return</p>
+          <div className="flex items-center justify-between">
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{flight.returnSlice.departureTime}</p>
+              <p className="text-xs font-medium text-muted-foreground">{flight.destinationIata}</p>
+            </div>
+            <div className="flex-1 flex flex-col items-center px-3">
+              <p className="text-[11px] text-muted-foreground">{flight.returnSlice.duration}</p>
+              <div className="flex items-center gap-1 w-full my-1">
+                <div className="flex-1 h-px bg-border" />
+                <Plane size={12} className="text-muted-foreground rotate-180" />
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {flight.returnSlice.stops === 0 ? <span style={{ color: "#22C55E" }}>Nonstop</span> : `${flight.returnSlice.stops} stop${flight.returnSlice.stops > 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{flight.returnSlice.arrivalTime}</p>
+              <p className="text-xs font-medium text-muted-foreground">{flight.originIata}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 group relative">
           <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
@@ -499,6 +526,23 @@ function transformDuffelOffer(offer: any, index: number, safetyScore: number): F
     isResilientCarrier: false,
     expiresAt: offer.expires_at || undefined,
     emissionsKg: offer.emissions_kg || null,
+    returnSlice: offer.return_slice ? {
+      departureTime: offer.return_slice.departure_time
+        ? new Date(offer.return_slice.departure_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        : "00:00",
+      arrivalTime: offer.return_slice.arrival_time
+        ? new Date(offer.return_slice.arrival_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        : "00:00",
+      duration: (() => {
+        const d = offer.return_slice.duration || '';
+        const m = d.match(/P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/);
+        if (!m) return d;
+        const h = (parseInt(m[1]||'0') * 24) + parseInt(m[2]||'0');
+        const min = parseInt(m[3]||'0');
+        return h > 0 ? `${h}h ${min > 0 ? min + 'm' : ''}`.trim() : `${min}m`;
+      })(),
+      stops: offer.return_slice.stops ?? 0,
+    } : null,
   };
 }
 

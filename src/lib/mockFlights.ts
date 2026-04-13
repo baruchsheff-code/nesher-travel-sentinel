@@ -32,6 +32,12 @@ export interface FlightResult {
   stopAirports?: string[];
   expiresAt?: string;
   emissionsKg?: number | null;
+  returnSlice?: {
+    departureTime: string;
+    arrivalTime: string;
+    duration: string;
+    stops: number;
+  } | null;
 }
 
 export function getMockFlightsForDestination(destinationIata: string): FlightResult[] {
