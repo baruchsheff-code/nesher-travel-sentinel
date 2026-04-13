@@ -388,10 +388,30 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
       )}
 
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <CreditCard size={13} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
-        </div>
+        {bestCard ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowPointsBreakdown(!showPointsBreakdown); }}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
+            <CreditCard size={13} style={{ color: "#C9A84C" }} />
+            <span className="text-xs font-semibold" style={{ color: "#C9A84C" }}>
+              💳 Best card: {bestCard.cardName} — earn {bestCard.points.toLocaleString()} pts (~${bestCard.valueUsd.toFixed(2)} value)
+            </span>
+          </button>
+        ) : userCards && userCards.length === 0 ? (
+          <button onClick={(e) => { e.stopPropagation(); window.location.href = "/settings"; }} className="flex items-center gap-2">
+            <CreditCard size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground underline">Add your cards to see points earnings →</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CreditCard size={13} className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Earn {flight.pointsEarn.toLocaleString()} pts on {flight.pointsCard}</span>
+          </div>
+        )}
+        {showPointsBreakdown && cardPoints.length > 0 && bestCard && (
+          <PointsBreakdown cardPoints={cardPoints} bestCard={bestCard.cardName} />
+        )}
         <div className="flex items-center gap-2">
           <Globe size={13} className="text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{flight.visaInfo}</span>
