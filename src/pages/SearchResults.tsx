@@ -579,6 +579,21 @@ const SearchResults = () => {
     fetchFlights();
   }, [fetchFlights]);
 
+  // Fetch resilient airlines once
+  useEffect(() => {
+    const fetchResilient = async () => {
+      try {
+        const { data } = await supabase.from("resilient_airlines").select("airline_code");
+        if (data) setResilientCodes(data.map(a => a.airline_code).filter(Boolean) as string[]);
+      } catch (err) {
+        console.error("Failed to fetch resilient airlines:", err);
+      } finally {
+        setResilientLoaded(true);
+      }
+    };
+    fetchResilient();
+  }, []);
+
   const handleSelectFlight = (flight: FlightResult) => {
     if (destination) navigate(`/flight?id=${flight.id}&dest=${destination.iata}`);
   };
