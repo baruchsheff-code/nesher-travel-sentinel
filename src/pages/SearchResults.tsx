@@ -499,6 +499,23 @@ function transformDuffelOffer(offer: any, index: number, safetyScore: number): F
     isResilientCarrier: false,
     expiresAt: offer.expires_at || undefined,
     emissionsKg: offer.emissions_kg || null,
+    returnSlice: offer.return_slice ? {
+      departureTime: offer.return_slice.departure_time
+        ? new Date(offer.return_slice.departure_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        : "00:00",
+      arrivalTime: offer.return_slice.arrival_time
+        ? new Date(offer.return_slice.arrival_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        : "00:00",
+      duration: (() => {
+        const d = offer.return_slice.duration || '';
+        const m = d.match(/P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/);
+        if (!m) return d;
+        const h = (parseInt(m[1]||'0') * 24) + parseInt(m[2]||'0');
+        const min = parseInt(m[3]||'0');
+        return h > 0 ? `${h}h ${min > 0 ? min + 'm' : ''}`.trim() : `${min}m`;
+      })(),
+      stops: offer.return_slice.stops ?? 0,
+    } : null,
   };
 }
 
