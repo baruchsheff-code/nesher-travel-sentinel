@@ -349,7 +349,33 @@ const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skipla
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3">
+      {flight.returnSlice && (
+        <div className="mb-4 pt-3 border-t border-border">
+          <p className="text-[11px] font-medium text-muted-foreground mb-2">Return</p>
+          <div className="flex items-center justify-between">
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{flight.returnSlice.departureTime}</p>
+              <p className="text-xs font-medium text-muted-foreground">{flight.destinationIata}</p>
+            </div>
+            <div className="flex-1 flex flex-col items-center px-3">
+              <p className="text-[11px] text-muted-foreground">{flight.returnSlice.duration}</p>
+              <div className="flex items-center gap-1 w-full my-1">
+                <div className="flex-1 h-px bg-border" />
+                <Plane size={12} className="text-muted-foreground rotate-180" />
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {flight.returnSlice.stops === 0 ? <span style={{ color: "#22C55E" }}>Nonstop</span> : `${flight.returnSlice.stops} stop${flight.returnSlice.stops > 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{flight.returnSlice.arrivalTime}</p>
+              <p className="text-xs font-medium text-muted-foreground">{flight.originIata}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
         <div className="flex items-center gap-2 group relative">
           <span className="text-2xl font-bold text-primary">{currencySymbol(flight.totalCurrency || "USD")}{flight.priceUsd.toLocaleString()}</span>
           {(flight.baseAmount != null || flight.taxAmount != null) && (
