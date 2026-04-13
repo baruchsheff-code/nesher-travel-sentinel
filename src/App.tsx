@@ -16,6 +16,8 @@ import SearchResults from "./pages/SearchResults.tsx";
 import SelectReturn from "./pages/SelectReturn.tsx";
 import TripReview from "./pages/TripReview.tsx";
 import AddOns from "./pages/AddOns.tsx";
+import Payment from "./pages/Payment.tsx";
+import BookingConfirmation from "./pages/BookingConfirmation.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import MyTrips from "./pages/MyTrips.tsx";
@@ -49,6 +51,8 @@ const App = () => {
               <Route path="/select-return" element={<SelectReturn />} />
               <Route path="/trip-review" element={<TripReview />} />
               <Route path="/add-ons" element={<AddOns />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/booking-confirmation" element={<BookingConfirmation />} />
               <Route path="/my-trips" element={<MyTrips />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/support" element={<Settings />} />
