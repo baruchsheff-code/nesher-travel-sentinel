@@ -1,5 +1,5 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw, Cloud, Wind, Droplets, Thermometer } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Plane, Globe, CreditCard, Lock, ChevronDown, Shield, Zap, Eye, Bird, Pencil, RefreshCw, Cloud, Wind, Droplets, Thermometer, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseDestination, type Destination, DESTINATION_MAP } from "@/lib/destinations";
 import { type FlightResult } from "@/lib/mockFlights";
@@ -9,6 +9,7 @@ import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 type SortMode = "best" | "cheapest" | "fastest";
