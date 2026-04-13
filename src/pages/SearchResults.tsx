@@ -513,7 +513,7 @@ const SearchResults = () => {
   const [editSearch, setEditSearch] = useState(false);
   const [flights, setFlights] = useState<FlightResult[]>([]);
   const [searchError, setSearchError] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<{ source: "LIVE" | "MOCK" | "NONE"; offersReceived: number; origin: string; destination: string } | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{ source: string; offersReceived: number; origin: string; destination: string } | null>(null);
   const [safetyData, setSafetyData] = useState<SafetyData | null>(null);
 
   // Skiplag state
