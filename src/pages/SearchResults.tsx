@@ -240,7 +240,43 @@ const ProtectedSkiplagCard = ({ flight, protection }: { flight: FlightResult; pr
   );
 };
 
-const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null }) => {
+interface CardPoints {
+  cardName: string;
+  points: number;
+  valueUsd: number;
+  multiplier: number;
+}
+
+function calcCardPoints(priceUsd: number, cards: { card_name: string; points_multiplier: Record<string, number> }[]): CardPoints[] {
+  return cards.map(card => {
+    const mult = card.points_multiplier;
+    // Use flights/travel multiplier if available, else everything, else other
+    const m = mult.flights ?? mult.travel ?? mult.everything ?? mult.other ?? 1;
+    const points = Math.round(priceUsd * m);
+    return { cardName: card.card_name, points, valueUsd: points * 0.015, multiplier: m };
+  }).sort((a, b) => b.points - a.points);
+}
+
+const PointsBreakdown = ({ cardPoints, bestCard }: { cardPoints: CardPoints[]; bestCard: string }) => (
+  <div className="mt-2 rounded-xl px-3 py-3 bg-background border border-border">
+    <p className="text-xs font-semibold text-foreground mb-2">Points breakdown for this flight</p>
+    <div className="space-y-1.5">
+      {cardPoints.map(cp => (
+        <div key={cp.cardName} className="flex items-center justify-between text-xs">
+          <span className={cp.cardName === bestCard ? "font-semibold text-foreground" : "text-muted-foreground"}>
+            {cp.cardName} {cp.cardName === bestCard && "← best"}
+          </span>
+          <span className={cp.cardName === bestCard ? "font-semibold" : "text-muted-foreground"} style={cp.cardName === bestCard ? { color: "#C9A84C" } : {}}>
+            {cp.points.toLocaleString()} pts (~${cp.valueUsd.toFixed(2)})
+          </span>
+        </div>
+      ))}
+    </div>
+    <p className="text-[11px] text-muted-foreground mt-2">💡 Use <span className="font-semibold text-foreground">{bestCard}</span> for this booking to maximize your return.</p>
+  </div>
+);
+
+const FlightCard = ({ flight, onSelect, onWatch, isCritical, isCrisisTab, skiplagProtection, userCards }: { flight: FlightResult; onSelect?: () => void; onWatch?: () => void; isCritical?: boolean; isCrisisTab?: boolean; skiplagProtection?: SkiplagProtection | null; userCards?: { card_name: string; points_multiplier: Record<string, number> }[] }) => {
   // If this flight is skiplag-protected, show the protected card
   if (flight.isSkiplag && skiplagProtection) {
     return <ProtectedSkiplagCard flight={flight} protection={skiplagProtection} />;
