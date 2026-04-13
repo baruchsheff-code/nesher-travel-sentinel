@@ -94,9 +94,12 @@ const SearchResults = () => {
 
       const rawOffers = data?.offers;
       if (Array.isArray(rawOffers) && rawOffers.length > 0) {
-        console.log("Search complete:", rawOffers.length, "offers received");
-        setOffers(rawOffers);
-        setAllOutboundOffers(rawOffers);
+        const realOffers = rawOffers.filter((offer: DuffelOffer) =>
+          offer.airline_code !== 'ZZ' && offer.airline_name !== 'Duffel Airways'
+        );
+        console.log("Search complete:", realOffers.length, "offers received");
+        setOffers(realOffers);
+        setAllOutboundOffers(realOffers);
       } else {
         setSearchError(true);
         setOffers([]);
