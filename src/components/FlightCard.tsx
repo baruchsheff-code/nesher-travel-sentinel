@@ -58,6 +58,7 @@ interface FlightCardProps {
 }
 
 export default function FlightCard({ offer, onSelect }: FlightCardProps) {
+  console.log('Card rendering offer:', offer);
   const symbol = currencySymbols[offer.total_currency] || "$";
   const price = parseFloat(offer.total_amount);
   const bgColor = airlineColors[offer.airline_code] || "#4A5568";
