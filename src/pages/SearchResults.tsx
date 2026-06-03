@@ -268,7 +268,7 @@ const SearchResults = () => {
   };
 
   const sortedOffers = useMemo(() => {
-    let list = [...offers];
+    let list = [...taggedOffers];
     if (activeTabKey === "crisis_safe" && diagnosis?.tools.resilient_filtering && diagnosis.route_info?.resilient_carriers) {
       const carriers = new Set(diagnosis.route_info.resilient_carriers);
       list = list.filter((o) => carriers.has(o.airline_code));
@@ -287,7 +287,7 @@ const SearchResults = () => {
       });
     }
     return list;
-  }, [offers, activeTabKey, diagnosis]);
+  }, [taggedOffers, activeTabKey, diagnosis]);
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "best", label: "✓ Best Value" },
