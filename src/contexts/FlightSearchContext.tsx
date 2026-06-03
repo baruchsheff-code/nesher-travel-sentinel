@@ -23,6 +23,7 @@ export interface DuffelOffer {
   tax_amount: string;
   expires_at: string;
   emissions_kg: number | null;
+  is_skiplag?: boolean;
   return_slice?: {
     departure_time: string;
     arrival_time: string;
