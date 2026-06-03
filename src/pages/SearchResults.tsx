@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFlightSearch, type DuffelOffer } from "@/contexts/FlightSearchContext";
 import FlightCard from "@/components/FlightCard";
+import { useAuth } from "@/contexts/AuthContext";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import { format } from "date-fns";
@@ -63,6 +64,39 @@ const SearchResults = () => {
   const [offers, setOffers] = useState<DuffelOffer[]>([]);
   const [editSearch, setEditSearch] = useState(false);
   const [diagnosis, setDiagnosis] = useState<TripDiagnosis | null>(null);
+  const { user } = useAuth();
+  const [wallet, setWallet] = useState<{ card_name: string; points_multiplier: Record<string, number> | null }[]>([]);
+  const [showPointsOpt, setShowPointsOpt] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setWallet([]); setShowPointsOpt(false); return; }
+    (async () => {
+      const [{ data: w }, { data: p }] = await Promise.all([
+        supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id),
+        supabase.from("user_preferences").select("show_points_optimization").eq("user_id", user.id).maybeSingle(),
+      ]);
+      setWallet((w as any) || []);
+      setShowPointsOpt(((p as any)?.show_points_optimization) ?? true);
+    })();
+  }, [user]);
+
+  const computePointsInfo = useCallback((offer: DuffelOffer) => {
+    if (!showPointsOpt || wallet.length === 0) return null;
+    const amount = parseFloat(offer.total_amount);
+    if (!isFinite(amount)) return null;
+    const ranked = wallet
+      .filter((c) => c.card_name)
+      .map((c) => {
+        const m = (c.points_multiplier || {}) as Record<string, number>;
+        const rate = m.flights || m.travel || m.all || m.everything || m.other || 1;
+        const points = Math.round(amount * rate);
+        const value = Math.round(points * 0.015);
+        return { card_name: c.card_name as string, points, value };
+      })
+      .sort((a, b) => b.points - a.points);
+    if (ranked.length === 0) return null;
+    return { best: ranked[0], all: ranked };
+  }, [wallet, showPointsOpt]);
 
   const destIata = sp.get("dest") || "";
   const destCity = sp.get("destCity") || "";
@@ -381,6 +415,7 @@ const SearchResults = () => {
             key={offer.id}
             offer={offer}
             onSelect={() => handleSelectFlight(offer)}
+            pointsInfo={computePointsInfo(offer)}
           />
         ))}
       </div>
