@@ -604,6 +604,7 @@ export type Database = {
           preferred_airlines: string[] | null
           safety_sensitivity: string | null
           seat_preference: string | null
+          show_points_optimization: boolean | null
           user_id: string
         }
         Insert: {
@@ -616,6 +617,7 @@ export type Database = {
           preferred_airlines?: string[] | null
           safety_sensitivity?: string | null
           seat_preference?: string | null
+          show_points_optimization?: boolean | null
           user_id: string
         }
         Update: {
@@ -628,6 +630,7 @@ export type Database = {
           preferred_airlines?: string[] | null
           safety_sensitivity?: string | null
           seat_preference?: string | null
+          show_points_optimization?: boolean | null
           user_id?: string
         }
         Relationships: []
