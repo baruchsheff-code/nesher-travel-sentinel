@@ -59,9 +59,10 @@ interface FlightCardProps {
     best: { card_name: string; points: number; value: number };
     all: { card_name: string; points: number; value: number }[];
   } | null;
+  skiplagBadge?: boolean;
 }
 
-export default function FlightCard({ offer, onSelect, pointsInfo }: FlightCardProps) {
+export default function FlightCard({ offer, onSelect, pointsInfo, skiplagBadge }: FlightCardProps) {
   console.log('Card rendering offer:', offer);
   const [pointsExpanded, setPointsExpanded] = useState(false);
   const symbol = currencySymbols[offer.total_currency] || "$";
@@ -74,6 +75,19 @@ export default function FlightCard({ offer, onSelect, pointsInfo }: FlightCardPr
       onClick={onSelect}
       className="rounded-2xl p-4 mb-3 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all duration-200 bg-card border border-border"
     >
+      {skiplagBadge && (
+        <div className="mb-2 -mt-1">
+          <span
+            className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: "rgba(245, 158, 11, 0.18)", color: "#F59E0B" }}
+          >
+            Hidden City ⚡
+          </span>
+          <p className="text-[11px] mt-1" style={{ color: "#F59E0B" }}>
+            Carry-on only · airline may penalize repeat use
+          </p>
+        </div>
+      )}
       {/* Row 1: Airline info */}
       <div className="flex items-center gap-2.5 mb-3">
         <div
