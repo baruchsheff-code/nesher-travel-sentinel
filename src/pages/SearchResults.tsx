@@ -73,9 +73,10 @@ const SearchResults = () => {
   const [skiplagBlocks, setSkiplagBlocks] = useState<Record<string, number>>({}); // airline_code -> daysRemaining
   const [skiplagAck, setSkiplagAck] = useState(false);
   const [pendingSkiplag, setPendingSkiplag] = useState<DuffelOffer | null>(null);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) { setWallet([]); setShowPointsOpt(false); setShowSkiplagFares(false); return; }
+    if (!user) { setWallet([]); setShowPointsOpt(false); setShowSkiplagFares(false); setPrefsLoaded(true); return; }
     (async () => {
       const [{ data: w }, { data: p }] = await Promise.all([
         supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id),
@@ -84,6 +85,8 @@ const SearchResults = () => {
       setWallet((w as any) || []);
       setShowPointsOpt(((p as any)?.show_points_optimization) ?? true);
       setShowSkiplagFares(((p as any)?.show_skiplag_fares) ?? false);
+      console.log("Loaded skiplag pref from DB:", (p as any)?.show_skiplag_fares);
+      setPrefsLoaded(true);
     })();
   }, [user]);
 
@@ -108,6 +111,7 @@ const SearchResults = () => {
   // Demo skiplag tagging in test mode + cooldown lookup whenever offers/user change
   const taggedOffers = useMemo<DuffelOffer[]>(() => {
     if (offers.length === 0) return offers;
+    if (!prefsLoaded) return offers;
     console.log('Skiplag toggle:', showSkiplagFares);
     if (!showSkiplagFares) return offers;
     const hasReal = offers.some((o) => (o as any).is_skiplag);
@@ -120,7 +124,7 @@ const SearchResults = () => {
     );
     console.log('Tagged flight:', cheapest.airline_name);
     return offers.map((o) => (o.id === cheapest.id ? { ...o, is_skiplag: true } : o));
-  }, [offers, showSkiplagFares]);
+  }, [offers, showSkiplagFares, prefsLoaded]);
 
   useEffect(() => {
     if (!user) { setSkiplagBlocks({}); return; }
