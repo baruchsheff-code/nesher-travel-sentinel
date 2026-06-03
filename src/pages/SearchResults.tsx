@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFlightSearch, type DuffelOffer } from "@/contexts/FlightSearchContext";
 import FlightCard from "@/components/FlightCard";
 import { useAuth } from "@/contexts/AuthContext";
+import SkiplagWarningModal from "@/components/SkiplagWarningModal";
+import { hasRecentSkiplag, SKIPLAG_COOLDOWN_DAYS } from "@/lib/skiplagProtection";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import { format } from "date-fns";
@@ -67,16 +69,21 @@ const SearchResults = () => {
   const { user } = useAuth();
   const [wallet, setWallet] = useState<{ card_name: string; points_multiplier: Record<string, number> | null }[]>([]);
   const [showPointsOpt, setShowPointsOpt] = useState(false);
+  const [showSkiplagFares, setShowSkiplagFares] = useState(false);
+  const [skiplagBlocks, setSkiplagBlocks] = useState<Record<string, number>>({}); // airline_code -> daysRemaining
+  const [skiplagAck, setSkiplagAck] = useState(false);
+  const [pendingSkiplag, setPendingSkiplag] = useState<DuffelOffer | null>(null);
 
   useEffect(() => {
-    if (!user) { setWallet([]); setShowPointsOpt(false); return; }
+    if (!user) { setWallet([]); setShowPointsOpt(false); setShowSkiplagFares(false); return; }
     (async () => {
       const [{ data: w }, { data: p }] = await Promise.all([
         supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id),
-        supabase.from("user_preferences").select("show_points_optimization").eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_preferences").select("show_points_optimization, show_skiplag_fares").eq("user_id", user.id).maybeSingle(),
       ]);
       setWallet((w as any) || []);
       setShowPointsOpt(((p as any)?.show_points_optimization) ?? true);
+      setShowSkiplagFares(((p as any)?.show_skiplag_fares) ?? false);
     })();
   }, [user]);
 
@@ -97,6 +104,37 @@ const SearchResults = () => {
     if (ranked.length === 0) return null;
     return { best: ranked[0], all: ranked };
   }, [wallet, showPointsOpt]);
+
+  // Demo skiplag tagging in test mode + cooldown lookup whenever offers/user change
+  const taggedOffers = useMemo<DuffelOffer[]>(() => {
+    if (offers.length === 0) return offers;
+    const hasReal = offers.some((o) => (o as any).is_skiplag);
+    if (hasReal) return offers;
+    // Mark cheapest 1-stop as demo skiplag
+    const oneStops = offers.filter((o) => o.stops === 1);
+    if (oneStops.length === 0) return offers;
+    const cheapest = oneStops.reduce((a, b) =>
+      parseFloat(a.total_amount) < parseFloat(b.total_amount) ? a : b
+    );
+    return offers.map((o) => (o.id === cheapest.id ? { ...o, is_skiplag: true } : o));
+  }, [offers]);
+
+  useEffect(() => {
+    if (!user) { setSkiplagBlocks({}); return; }
+    const codes = Array.from(new Set(taggedOffers.filter((o) => (o as any).is_skiplag).map((o) => o.airline_code)));
+    if (codes.length === 0) { setSkiplagBlocks({}); return; }
+    (async () => {
+      const entries = await Promise.all(
+        codes.map(async (code) => {
+          const r = await hasRecentSkiplag(user.id, code);
+          return [code, r.blocked ? r.daysRemaining : 0] as const;
+        })
+      );
+      const map: Record<string, number> = {};
+      entries.forEach(([c, d]) => { if (d > 0) map[c] = d; });
+      setSkiplagBlocks(map);
+    })();
+  }, [user, taggedOffers]);
 
   const destIata = sp.get("dest") || "";
   const destCity = sp.get("destCity") || "";
