@@ -10,6 +10,30 @@ import { format } from "date-fns";
 import { parseDestination, DESTINATION_MAP, type Destination } from "@/lib/destinations";
 
 type SortMode = "best" | "cheapest" | "fastest";
+type TabKey = SortMode | "crisis_safe";
+
+const IATA_TO_COUNTRY: Record<string, string> = {
+  TLV: 'IL', BEY: 'LB', KBP: 'UA', CAI: 'EG',
+  LOS: 'NG', AMM: 'JO', CDG: 'FR', JFK: 'US',
+  LHR: 'GB', LAX: 'US', ATH: 'GR', DXB: 'AE',
+  IST: 'TR', LCA: 'CY',
+};
+
+interface TripDiagnosis {
+  diagnosis: 'standard' | 'crisis' | 'complex' | 'expensive';
+  reasons: string[];
+  tools: {
+    safety_banner: boolean;
+    crisis_safe_tab: boolean;
+    resilient_filtering: boolean;
+    split_ticket: boolean;
+  };
+  route_info: {
+    resilient_carriers?: string[];
+    safe_hubs?: string[];
+    visa_notes?: string;
+  } | null;
+}
 
 function findDestByIata(iata: string): Destination | null {
   for (const d of Object.values(DESTINATION_MAP)) {
@@ -33,10 +57,12 @@ const SearchResults = () => {
   } = useFlightSearch();
 
   const [activeTab, setActiveTab] = useState<SortMode>("best");
+  const [activeTabKey, setActiveTabKey] = useState<TabKey>("best");
   const [loading, setLoading] = useState(true);
   const [searchError, setSearchError] = useState(false);
   const [offers, setOffers] = useState<DuffelOffer[]>([]);
   const [editSearch, setEditSearch] = useState(false);
+  const [diagnosis, setDiagnosis] = useState<TripDiagnosis | null>(null);
 
   const destIata = sp.get("dest") || "";
   const destCity = sp.get("destCity") || "";
@@ -104,6 +130,24 @@ const SearchResults = () => {
         console.log("Search complete:", realOffers.length, "offers received");
         setOffers(realOffers);
         setAllOutboundOffers(realOffers);
+
+        // Trip diagnosis layer (non-blocking, additive)
+        try {
+          const directPrices = realOffers
+            .filter((o: DuffelOffer) => o.stops === 0)
+            .map((o: DuffelOffer) => parseFloat(o.total_amount));
+          const directPrice = directPrices.length ? Math.min(...directPrices) : null;
+          const { data: diag } = await supabase.functions.invoke('diagnose-trip', {
+            body: {
+              destination_iata: destination.iata,
+              destination_country_code: IATA_TO_COUNTRY[destination.iata] || null,
+              direct_price: directPrice,
+            },
+          });
+          if (diag) setDiagnosis(diag as TripDiagnosis);
+        } catch (diagErr) {
+          console.warn('diagnose-trip failed (non-blocking):', diagErr);
+        }
       } else {
         setSearchError(true);
         setOffers([]);
@@ -152,10 +196,15 @@ const SearchResults = () => {
   };
 
   const sortedOffers = useMemo(() => {
-    const list = [...offers];
-    if (activeTab === "cheapest") {
+    let list = [...offers];
+    if (activeTabKey === "crisis_safe" && diagnosis?.tools.resilient_filtering && diagnosis.route_info?.resilient_carriers) {
+      const carriers = new Set(diagnosis.route_info.resilient_carriers);
+      list = list.filter((o) => carriers.has(o.airline_code));
+    }
+    const sortMode: SortMode = activeTabKey === "crisis_safe" ? "best" : activeTabKey;
+    if (sortMode === "cheapest") {
       list.sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount));
-    } else if (activeTab === "fastest") {
+    } else if (sortMode === "fastest") {
       list.sort((a, b) => parseDurationMinutes(a.duration) - parseDurationMinutes(b.duration));
     } else {
       // Best value: price ASC then stops ASC
@@ -166,12 +215,13 @@ const SearchResults = () => {
       });
     }
     return list;
-  }, [offers, activeTab]);
+  }, [offers, activeTabKey, diagnosis]);
 
-  const tabs: { key: SortMode; label: string }[] = [
+  const tabs: { key: TabKey; label: string }[] = [
     { key: "best", label: "✓ Best Value" },
     { key: "cheapest", label: "Cheapest" },
     { key: "fastest", label: "Fastest" },
+    ...(diagnosis?.tools.crisis_safe_tab ? [{ key: "crisis_safe" as TabKey, label: "🛡️ Crisis-Safe" }] : []),
   ];
 
   const formattedDate = dateStr ? format(new Date(dateStr + "T12:00:00"), "MMM d") : "";
@@ -283,10 +333,10 @@ const SearchResults = () => {
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTabKey(tab.key); if (tab.key !== 'crisis_safe') setActiveTab(tab.key); }}
             className="rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200"
             style={
-              activeTab === tab.key
+              activeTabKey === tab.key
                 ? { backgroundColor: "hsl(var(--foreground))", color: "hsl(var(--background))" }
                 : { color: "hsl(var(--muted-foreground))" }
             }
@@ -295,6 +345,34 @@ const SearchResults = () => {
           </button>
         ))}
       </div>
+
+      {/* Diagnosis banners */}
+      {diagnosis && (diagnosis.tools.safety_banner || diagnosis.tools.split_ticket || diagnosis.route_info?.visa_notes) && (
+        <div className="px-4 mb-3 space-y-2">
+          {diagnosis.tools.safety_banner && diagnosis.reasons.length > 0 && (
+            <div className="rounded-2xl p-3 text-sm" style={{ backgroundColor: "rgba(231, 76, 60, 0.12)", color: "#E74C3C" }}>
+              <div className="font-semibold mb-1">⚠️ Safety advisory</div>
+              <div className="text-xs leading-relaxed text-foreground/80">{diagnosis.reasons.join(' · ')}</div>
+            </div>
+          )}
+          {diagnosis.tools.split_ticket && diagnosis.route_info?.safe_hubs && diagnosis.route_info.safe_hubs.length > 0 && (
+            <div className="rounded-2xl p-3 text-sm" style={{ backgroundColor: "rgba(201, 168, 76, 0.12)" }}>
+              <div className="font-semibold mb-1 text-foreground">💡 Smart routing available</div>
+              <div className="text-xs leading-relaxed text-foreground/80 mb-2">
+                {diagnosis.reasons.join(' · ')}
+                {diagnosis.reasons.length > 0 && ' '}
+                We can build a split-ticket route through {diagnosis.route_info.safe_hubs.join(' or ')} to get you there reliably.
+              </div>
+              <button className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: "#C9A84C", color: "#0A0F1E" }}>
+                Show split-ticket options
+              </button>
+            </div>
+          )}
+          {diagnosis.route_info?.visa_notes && (
+            <div className="text-xs text-muted-foreground px-1">ℹ️ {diagnosis.route_info.visa_notes}</div>
+          )}
+        </div>
+      )}
 
       {/* Flight cards */}
       <div className="px-4">
