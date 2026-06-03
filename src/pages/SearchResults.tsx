@@ -456,15 +456,60 @@ const SearchResults = () => {
 
       {/* Flight cards */}
       <div className="px-4">
-        {sortedOffers.map((offer) => (
-          <FlightCard
-            key={offer.id}
-            offer={offer}
-            onSelect={() => handleSelectFlight(offer)}
-            pointsInfo={computePointsInfo(offer)}
-          />
-        ))}
+        {(() => {
+          // Group blocked-skiplag offers by airline for collapsed protection rows
+          const blockedByAirline: Record<string, { name: string; count: number; days: number }> = {};
+          const visible: DuffelOffer[] = [];
+          for (const o of sortedOffers) {
+            const isSkiplag = (o as any).is_skiplag === true;
+            if (isSkiplag && !showSkiplagFares) continue; // hidden entirely
+            if (isSkiplag && skiplagBlocks[o.airline_code]) {
+              const entry = blockedByAirline[o.airline_code] || {
+                name: o.airline_name, count: 0, days: skiplagBlocks[o.airline_code],
+              };
+              entry.count += 1;
+              blockedByAirline[o.airline_code] = entry;
+              continue;
+            }
+            visible.push(o);
+          }
+          return (
+            <>
+              {Object.entries(blockedByAirline).map(([code, info]) => (
+                <div
+                  key={`block-${code}`}
+                  className="rounded-2xl p-3 mb-3 border border-border bg-card flex items-start gap-2"
+                >
+                  <span className="text-base leading-none mt-0.5">🛡️</span>
+                  <p className="text-xs text-foreground/85 leading-relaxed">
+                    {info.count} hidden-city fare{info.count > 1 ? "s" : ""} hidden — protecting your {info.name} account. Available again in {info.days} day{info.days !== 1 ? "s" : ""}.
+                  </p>
+                </div>
+              ))}
+              {visible.map((offer) => (
+                <FlightCard
+                  key={offer.id}
+                  offer={offer}
+                  onSelect={() => handleSelectFlight(offer)}
+                  pointsInfo={computePointsInfo(offer)}
+                  skiplagBadge={(offer as any).is_skiplag === true}
+                />
+              ))}
+            </>
+          );
+        })()}
       </div>
+
+      <SkiplagWarningModal
+        open={pendingSkiplag !== null}
+        onCancel={() => setPendingSkiplag(null)}
+        onConfirm={() => {
+          const o = pendingSkiplag;
+          setSkiplagAck(true);
+          setPendingSkiplag(null);
+          if (o) proceedToSelect(o);
+        }}
+      />
     </div>
   );
 };
