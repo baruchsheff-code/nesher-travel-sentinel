@@ -283,6 +283,13 @@ const Settings = () => {
         <SectionHeader icon={Wallet} title="My Cards" />
         <p className="text-xs text-muted-foreground -mt-2 mb-3">Select the cards you own to see points earnings on flights.</p>
         <div className="bg-card rounded-2xl border border-border p-4">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
+            <div className="min-w-0">
+              <p className="text-sm text-foreground">Show points recommendations</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Display best-card earnings on flight results</p>
+            </div>
+            <Toggle checked={showPointsOpt} onChange={setShowPointsOpt} />
+          </div>
           {cards.length > 0 && (
             <div className="space-y-2 mb-3">
               {cards.map((card) => {
