@@ -421,7 +421,17 @@ const Settings = () => {
             <Toggle checked={esimOffer} onChange={setEsimOffer} />
           </SettingRow>
           <SettingRow label="Show hidden-city fares" desc="Reveal skiplag fares with built-in 6-month airline cooldown protection">
-            <Toggle checked={showSkiplagFares} onChange={setShowSkiplagFares} />
+            <Toggle
+              checked={showSkiplagFares}
+              onChange={async (v) => {
+                setShowSkiplagFares(v);
+                if (!user) return;
+                await supabase
+                  .from("user_preferences")
+                  .upsert({ user_id: user.id, show_skiplag_fares: v }, { onConflict: "user_id" });
+                console.log("Saved skiplag pref:", v);
+              }}
+            />
           </SettingRow>
         </div>
 
