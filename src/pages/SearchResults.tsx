@@ -108,16 +108,19 @@ const SearchResults = () => {
   // Demo skiplag tagging in test mode + cooldown lookup whenever offers/user change
   const taggedOffers = useMemo<DuffelOffer[]>(() => {
     if (offers.length === 0) return offers;
+    console.log('Skiplag toggle:', showSkiplagFares);
+    if (!showSkiplagFares) return offers;
     const hasReal = offers.some((o) => (o as any).is_skiplag);
     if (hasReal) return offers;
     // Mark cheapest 1-stop as demo skiplag
-    const oneStops = offers.filter((o) => o.stops === 1);
-    if (oneStops.length === 0) return offers;
-    const cheapest = oneStops.reduce((a, b) =>
+    const withStops = offers.filter((o) => o.stops >= 1);
+    if (withStops.length === 0) return offers;
+    const cheapest = withStops.reduce((a, b) =>
       parseFloat(a.total_amount) < parseFloat(b.total_amount) ? a : b
     );
+    console.log('Tagged flight:', cheapest.airline_name);
     return offers.map((o) => (o.id === cheapest.id ? { ...o, is_skiplag: true } : o));
-  }, [offers]);
+  }, [offers, showSkiplagFares]);
 
   useEffect(() => {
     if (!user) { setSkiplagBlocks({}); return; }
