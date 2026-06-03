@@ -48,6 +48,7 @@ const Settings = () => {
   const [autoRebook, setAutoRebook] = useState(false);
   const [esimOffer, setEsimOffer] = useState(true);
   const [showPointsOpt, setShowPointsOpt] = useState(true);
+  const [showSkiplagFares, setShowSkiplagFares] = useState(false);
 
   // Notifications
   const [notifDelays, setNotifDelays] = useState(true);
@@ -90,6 +91,7 @@ const Settings = () => {
         setAutoRebook(prefs.auto_rebook_enabled ?? false);
         setEsimOffer(prefs.esim_auto_offer ?? true);
         setShowPointsOpt((prefs as any).show_points_optimization ?? true);
+        setShowSkiplagFares((prefs as any).show_skiplag_fares ?? false);
       }
 
       const { data: walletData } = await supabase.from("user_wallet").select("*").eq("user_id", user.id);
@@ -118,6 +120,7 @@ const Settings = () => {
       pref_direct_only: directOnly, auto_checkin_enabled: autoCheckin,
       auto_rebook_enabled: autoRebook, esim_auto_offer: esimOffer,
       show_points_optimization: showPointsOpt,
+      show_skiplag_fares: showSkiplagFares,
     } as any;
     const { data: existingPrefs } = await supabase.from("user_preferences").select("user_id").eq("user_id", user.id).maybeSingle();
     if (existingPrefs) await supabase.from("user_preferences").update(prefsData).eq("user_id", user.id);
@@ -416,6 +419,9 @@ const Settings = () => {
           </SettingRow>
           <SettingRow label="eSIM Offers" desc="Suggest travel eSIM for international flights">
             <Toggle checked={esimOffer} onChange={setEsimOffer} />
+          </SettingRow>
+          <SettingRow label="Show hidden-city fares" desc="Reveal skiplag fares with built-in 6-month airline cooldown protection">
+            <Toggle checked={showSkiplagFares} onChange={setShowSkiplagFares} />
           </SettingRow>
         </div>
 

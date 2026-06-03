@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFlightSearch, type DuffelOffer } from "@/contexts/FlightSearchContext";
 import FlightCard from "@/components/FlightCard";
 import { useAuth } from "@/contexts/AuthContext";
+import SkiplagWarningModal from "@/components/SkiplagWarningModal";
+import { hasRecentSkiplag, SKIPLAG_COOLDOWN_DAYS } from "@/lib/skiplagProtection";
 import FlightSearchBar, { type FlightSearchParams } from "@/components/FlightSearchBar";
 import SearchLoadingScreen from "@/components/SearchLoadingScreen";
 import { format } from "date-fns";
@@ -67,16 +69,21 @@ const SearchResults = () => {
   const { user } = useAuth();
   const [wallet, setWallet] = useState<{ card_name: string; points_multiplier: Record<string, number> | null }[]>([]);
   const [showPointsOpt, setShowPointsOpt] = useState(false);
+  const [showSkiplagFares, setShowSkiplagFares] = useState(false);
+  const [skiplagBlocks, setSkiplagBlocks] = useState<Record<string, number>>({}); // airline_code -> daysRemaining
+  const [skiplagAck, setSkiplagAck] = useState(false);
+  const [pendingSkiplag, setPendingSkiplag] = useState<DuffelOffer | null>(null);
 
   useEffect(() => {
-    if (!user) { setWallet([]); setShowPointsOpt(false); return; }
+    if (!user) { setWallet([]); setShowPointsOpt(false); setShowSkiplagFares(false); return; }
     (async () => {
       const [{ data: w }, { data: p }] = await Promise.all([
         supabase.from("user_wallet").select("card_name, points_multiplier").eq("user_id", user.id),
-        supabase.from("user_preferences").select("show_points_optimization").eq("user_id", user.id).maybeSingle(),
+        supabase.from("user_preferences").select("show_points_optimization, show_skiplag_fares").eq("user_id", user.id).maybeSingle(),
       ]);
       setWallet((w as any) || []);
       setShowPointsOpt(((p as any)?.show_points_optimization) ?? true);
+      setShowSkiplagFares(((p as any)?.show_skiplag_fares) ?? false);
     })();
   }, [user]);
 
@@ -97,6 +104,37 @@ const SearchResults = () => {
     if (ranked.length === 0) return null;
     return { best: ranked[0], all: ranked };
   }, [wallet, showPointsOpt]);
+
+  // Demo skiplag tagging in test mode + cooldown lookup whenever offers/user change
+  const taggedOffers = useMemo<DuffelOffer[]>(() => {
+    if (offers.length === 0) return offers;
+    const hasReal = offers.some((o) => (o as any).is_skiplag);
+    if (hasReal) return offers;
+    // Mark cheapest 1-stop as demo skiplag
+    const oneStops = offers.filter((o) => o.stops === 1);
+    if (oneStops.length === 0) return offers;
+    const cheapest = oneStops.reduce((a, b) =>
+      parseFloat(a.total_amount) < parseFloat(b.total_amount) ? a : b
+    );
+    return offers.map((o) => (o.id === cheapest.id ? { ...o, is_skiplag: true } : o));
+  }, [offers]);
+
+  useEffect(() => {
+    if (!user) { setSkiplagBlocks({}); return; }
+    const codes = Array.from(new Set(taggedOffers.filter((o) => (o as any).is_skiplag).map((o) => o.airline_code)));
+    if (codes.length === 0) { setSkiplagBlocks({}); return; }
+    (async () => {
+      const entries = await Promise.all(
+        codes.map(async (code) => {
+          const r = await hasRecentSkiplag(user.id, code);
+          return [code, r.blocked ? r.daysRemaining : 0] as const;
+        })
+      );
+      const map: Record<string, number> = {};
+      entries.forEach(([c, d]) => { if (d > 0) map[c] = d; });
+      setSkiplagBlocks(map);
+    })();
+  }, [user, taggedOffers]);
 
   const destIata = sp.get("dest") || "";
   const destCity = sp.get("destCity") || "";
@@ -202,13 +240,21 @@ const SearchResults = () => {
     fetchFlights();
   }, [searchKey, lastSearchKey, fetchFlights]);
 
-  const handleSelectFlight = (offer: DuffelOffer) => {
+  const proceedToSelect = (offer: DuffelOffer) => {
     setOutboundOffer(offer);
     if (tripType === "round-trip" && returnDateStr) {
       navigate("/select-return");
     } else {
       navigate("/add-ons");
     }
+  };
+
+  const handleSelectFlight = (offer: DuffelOffer) => {
+    if ((offer as any).is_skiplag && !skiplagAck) {
+      setPendingSkiplag(offer);
+      return;
+    }
+    proceedToSelect(offer);
   };
 
   const handleEditSearch = (params: FlightSearchParams) => {
@@ -230,7 +276,7 @@ const SearchResults = () => {
   };
 
   const sortedOffers = useMemo(() => {
-    let list = [...offers];
+    let list = [...taggedOffers];
     if (activeTabKey === "crisis_safe" && diagnosis?.tools.resilient_filtering && diagnosis.route_info?.resilient_carriers) {
       const carriers = new Set(diagnosis.route_info.resilient_carriers);
       list = list.filter((o) => carriers.has(o.airline_code));
@@ -249,7 +295,7 @@ const SearchResults = () => {
       });
     }
     return list;
-  }, [offers, activeTabKey, diagnosis]);
+  }, [taggedOffers, activeTabKey, diagnosis]);
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "best", label: "✓ Best Value" },
@@ -410,15 +456,60 @@ const SearchResults = () => {
 
       {/* Flight cards */}
       <div className="px-4">
-        {sortedOffers.map((offer) => (
-          <FlightCard
-            key={offer.id}
-            offer={offer}
-            onSelect={() => handleSelectFlight(offer)}
-            pointsInfo={computePointsInfo(offer)}
-          />
-        ))}
+        {(() => {
+          // Group blocked-skiplag offers by airline for collapsed protection rows
+          const blockedByAirline: Record<string, { name: string; count: number; days: number }> = {};
+          const visible: DuffelOffer[] = [];
+          for (const o of sortedOffers) {
+            const isSkiplag = (o as any).is_skiplag === true;
+            if (isSkiplag && !showSkiplagFares) continue; // hidden entirely
+            if (isSkiplag && skiplagBlocks[o.airline_code]) {
+              const entry = blockedByAirline[o.airline_code] || {
+                name: o.airline_name, count: 0, days: skiplagBlocks[o.airline_code],
+              };
+              entry.count += 1;
+              blockedByAirline[o.airline_code] = entry;
+              continue;
+            }
+            visible.push(o);
+          }
+          return (
+            <>
+              {Object.entries(blockedByAirline).map(([code, info]) => (
+                <div
+                  key={`block-${code}`}
+                  className="rounded-2xl p-3 mb-3 border border-border bg-card flex items-start gap-2"
+                >
+                  <span className="text-base leading-none mt-0.5">🛡️</span>
+                  <p className="text-xs text-foreground/85 leading-relaxed">
+                    {info.count} hidden-city fare{info.count > 1 ? "s" : ""} hidden — protecting your {info.name} account. Available again in {info.days} day{info.days !== 1 ? "s" : ""}.
+                  </p>
+                </div>
+              ))}
+              {visible.map((offer) => (
+                <FlightCard
+                  key={offer.id}
+                  offer={offer}
+                  onSelect={() => handleSelectFlight(offer)}
+                  pointsInfo={computePointsInfo(offer)}
+                  skiplagBadge={(offer as any).is_skiplag === true}
+                />
+              ))}
+            </>
+          );
+        })()}
       </div>
+
+      <SkiplagWarningModal
+        open={pendingSkiplag !== null}
+        onCancel={() => setPendingSkiplag(null)}
+        onConfirm={() => {
+          const o = pendingSkiplag;
+          setSkiplagAck(true);
+          setPendingSkiplag(null);
+          if (o) proceedToSelect(o);
+        }}
+      />
     </div>
   );
 };

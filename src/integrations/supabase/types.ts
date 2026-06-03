@@ -605,6 +605,7 @@ export type Database = {
           safety_sensitivity: string | null
           seat_preference: string | null
           show_points_optimization: boolean | null
+          show_skiplag_fares: boolean | null
           user_id: string
         }
         Insert: {
@@ -618,6 +619,7 @@ export type Database = {
           safety_sensitivity?: string | null
           seat_preference?: string | null
           show_points_optimization?: boolean | null
+          show_skiplag_fares?: boolean | null
           user_id: string
         }
         Update: {
@@ -631,6 +633,7 @@ export type Database = {
           safety_sensitivity?: string | null
           seat_preference?: string | null
           show_points_optimization?: boolean | null
+          show_skiplag_fares?: boolean | null
           user_id?: string
         }
         Relationships: []
