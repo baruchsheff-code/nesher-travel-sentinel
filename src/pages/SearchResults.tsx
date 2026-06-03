@@ -240,13 +240,21 @@ const SearchResults = () => {
     fetchFlights();
   }, [searchKey, lastSearchKey, fetchFlights]);
 
-  const handleSelectFlight = (offer: DuffelOffer) => {
+  const proceedToSelect = (offer: DuffelOffer) => {
     setOutboundOffer(offer);
     if (tripType === "round-trip" && returnDateStr) {
       navigate("/select-return");
     } else {
       navigate("/add-ons");
     }
+  };
+
+  const handleSelectFlight = (offer: DuffelOffer) => {
+    if ((offer as any).is_skiplag && !skiplagAck) {
+      setPendingSkiplag(offer);
+      return;
+    }
+    proceedToSelect(offer);
   };
 
   const handleEditSearch = (params: FlightSearchParams) => {
