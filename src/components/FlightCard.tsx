@@ -55,10 +55,15 @@ const FareExpiry = ({ expiresAt }: { expiresAt: string }) => {
 interface FlightCardProps {
   offer: DuffelOffer;
   onSelect: () => void;
+  pointsInfo?: {
+    best: { card_name: string; points: number; value: number };
+    all: { card_name: string; points: number; value: number }[];
+  } | null;
 }
 
-export default function FlightCard({ offer, onSelect }: FlightCardProps) {
+export default function FlightCard({ offer, onSelect, pointsInfo }: FlightCardProps) {
   console.log('Card rendering offer:', offer);
+  const [pointsExpanded, setPointsExpanded] = useState(false);
   const symbol = currencySymbols[offer.total_currency] || "$";
   const price = parseFloat(offer.total_amount);
   const bgColor = airlineColors[offer.airline_code] || "#4A5568";
@@ -142,6 +147,26 @@ export default function FlightCard({ offer, onSelect }: FlightCardProps) {
         <p className="text-[11px] text-muted-foreground">
           🌱 {offer.emissions_kg} kg CO₂
         </p>
+      )}
+
+      {pointsInfo && (
+        <div
+          className="mt-2"
+          onClick={(e) => { e.stopPropagation(); setPointsExpanded((v) => !v); }}
+        >
+          <p className="text-[12px] font-semibold cursor-pointer" style={{ color: "#C9A84C" }}>
+            💳 Best: {pointsInfo.best.card_name} — earn {pointsInfo.best.points.toLocaleString()} pts (~${pointsInfo.best.value})
+          </p>
+          {pointsExpanded && pointsInfo.all.length > 1 && (
+            <div className="mt-1.5 space-y-0.5">
+              {pointsInfo.all.map((c) => (
+                <p key={c.card_name} className="text-[11px] text-muted-foreground">
+                  {c.card_name}: {c.points.toLocaleString()} pts (~${c.value})
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
