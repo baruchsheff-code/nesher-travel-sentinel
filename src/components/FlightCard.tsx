@@ -77,12 +77,19 @@ export default function FlightCard({ offer, onSelect, pointsInfo, skiplagBadge }
     >
       {skiplagBadge && (
         <div className="mb-2 -mt-1">
-          <span
-            className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: "rgba(245, 158, 11, 0.18)", color: "#F59E0B" }}
-          >
-            Hidden City ⚡
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "rgba(245, 158, 11, 0.18)", color: "#F59E0B" }}
+            >
+              Hidden City ⚡
+            </span>
+            <span
+              className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-border text-muted-foreground"
+            >
+              DEMO
+            </span>
+          </div>
           <p className="text-[11px] mt-1" style={{ color: "#F59E0B" }}>
             Carry-on only · airline may penalize repeat use
           </p>
