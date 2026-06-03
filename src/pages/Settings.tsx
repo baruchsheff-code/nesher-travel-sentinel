@@ -47,6 +47,7 @@ const Settings = () => {
   const [autoCheckin, setAutoCheckin] = useState(false);
   const [autoRebook, setAutoRebook] = useState(false);
   const [esimOffer, setEsimOffer] = useState(true);
+  const [showPointsOpt, setShowPointsOpt] = useState(true);
 
   // Notifications
   const [notifDelays, setNotifDelays] = useState(true);
@@ -88,6 +89,7 @@ const Settings = () => {
         setAutoCheckin(prefs.auto_checkin_enabled ?? false);
         setAutoRebook(prefs.auto_rebook_enabled ?? false);
         setEsimOffer(prefs.esim_auto_offer ?? true);
+        setShowPointsOpt((prefs as any).show_points_optimization ?? true);
       }
 
       const { data: walletData } = await supabase.from("user_wallet").select("*").eq("user_id", user.id);
@@ -115,7 +117,8 @@ const Settings = () => {
       user_id: user.id, seat_preference: seatPref, max_stops: maxStops,
       pref_direct_only: directOnly, auto_checkin_enabled: autoCheckin,
       auto_rebook_enabled: autoRebook, esim_auto_offer: esimOffer,
-    };
+      show_points_optimization: showPointsOpt,
+    } as any;
     const { data: existingPrefs } = await supabase.from("user_preferences").select("user_id").eq("user_id", user.id).maybeSingle();
     if (existingPrefs) await supabase.from("user_preferences").update(prefsData).eq("user_id", user.id);
     else await supabase.from("user_preferences").insert(prefsData);
